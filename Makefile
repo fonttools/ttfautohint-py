@@ -5,8 +5,9 @@ PLATFORM := $(shell $(PYTHON) -c \
 
 ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SRC := $(ROOT)/src/c
-BUILD := $(ROOT)/build/$(PLATFORM)/temp
-PREFIX := $(ROOT)/build/$(PLATFORM)/local
+BUILD := $(ROOT)/build/$(PLATFORM)
+TMP := $(BUILD)/temp
+PREFIX := $(BUILD)/local
 
 CPPFLAGS := -I$(PREFIX)/include
 CFLAGS := -g -O2 -fPIC
@@ -17,26 +18,34 @@ LDFLAGS := -fPIC -L$(PREFIX)/lib -L$(PREFIX)/lib64
 # dllwrap ourselves on the static libraries, so we --disable-shared
 # https://lists.gnu.org/archive/html/freetype-devel/2017-12/msg00013.html
 # http://lists.gnu.org/archive/html/libtool/2017-12/msg00003.html
-LIBTA_OPTIONS := --enable-static
+LIBTTFAUTOHINT_OPTIONS := --enable-static
 ifeq ($(OS), Windows_NT)
-  LIBTA_OPTIONS += --disable-shared
+  LIBTTFAUTOHINT_OPTIONS += --disable-shared
+  LIBTTFAUTOHINT := "ttfautohint.dll"
 else
-  LIBTA_OPTIONS += --enable-shared
+  LIBTTFAUTOHINT_OPTIONS += --enable-shared
+  ifeq ($shell uname -s, Darwin)
+    LIBTTFAUTOHINT := "libttfautohint.dylib"
+  else ifeq ($shell uname -s, Linux)
+    LIBTTFAUTOHINT := "libttfautohint.so"
+  endif
 endif
 
-all: ttfautohint
+all: dll
 
-freetype: $(BUILD)/.freetype
+dll: $(BUILD)/$(LIBTTFAUTOHINT)
 
-harfbuzz: $(BUILD)/.harfbuzz
+freetype: $(TMP)/.freetype
 
-ttfautohint: $(BUILD)/.ttfautohint
+harfbuzz: $(TMP)/.harfbuzz
 
-$(BUILD)/.freetype:
+ttfautohint: $(TMP)/.ttfautohint
+
+$(TMP)/.freetype:
 	cd $(SRC)/freetype2; ./autogen.sh
-	@rm -rf $(BUILD)/freetype
-	@mkdir -p $(BUILD)/freetype
-	cd $(BUILD)/freetype; $(SRC)/freetype2/configure \
+	@rm -rf $(TMP)/freetype
+	@mkdir -p $(TMP)/freetype
+	cd $(TMP)/freetype; $(SRC)/freetype2/configure \
         --without-bzip2 \
         --without-png \
         --without-zlib \
@@ -48,16 +57,16 @@ $(BUILD)/.freetype:
         CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
         CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
         LDFLAGS="$(LDFLAGS)"
-	cd $(BUILD)/freetype; make
-	cd $(BUILD)/freetype; make install
-	touch $(BUILD)/.freetype
+	cd $(TMP)/freetype; make
+	cd $(TMP)/freetype; make install
+	touch $(TMP)/.freetype
 
-$(BUILD)/.harfbuzz: $(BUILD)/.freetype
+$(TMP)/.harfbuzz: $(TMP)/.freetype
 	cd $(SRC)/harfbuzz; ./autogen.sh
 	cd $(SRC)/harfbuzz; make distclean
-	@rm -rf $(BUILD)/harfbuzz
-	@mkdir -p $(BUILD)/harfbuzz
-	cd $(BUILD)/harfbuzz; $(SRC)/harfbuzz/configure \
+	@rm -rf $(TMP)/harfbuzz
+	@mkdir -p $(TMP)/harfbuzz
+	cd $(TMP)/harfbuzz; $(SRC)/harfbuzz/configure \
         --disable-dependency-tracking \
         --disable-gtk-doc-html \
         --with-glib=no \
@@ -73,20 +82,20 @@ $(BUILD)/.harfbuzz: $(BUILD)/.freetype
         PKG_CONFIG=true \
         FREETYPE_CFLAGS="$(CPPFLAGS)/freetype2" \
         FREETYPE_LIBS="$(LDFLAGS) -lfreetype"
-	cd $(BUILD)/harfbuzz; make
-	cd $(BUILD)/harfbuzz; make install
-	touch $(BUILD)/.harfbuzz
+	cd $(TMP)/harfbuzz; make
+	cd $(TMP)/harfbuzz; make install
+	touch $(TMP)/.harfbuzz
 
-$(BUILD)/.ttfautohint: $(BUILD)/.harfbuzz
+$(TMP)/.ttfautohint: $(TMP)/.harfbuzz
 	cd $(SRC)/ttfautohint; ./bootstrap
-	@rm -rf $(BUILD)/ttfautohint
-	@mkdir -p $(BUILD)/ttfautohint
-	cd $(BUILD)/ttfautohint; $(SRC)/ttfautohint/configure \
+	@rm -rf $(TMP)/ttfautohint
+	@mkdir -p $(TMP)/ttfautohint
+	cd $(TMP)/ttfautohint; $(SRC)/ttfautohint/configure \
         --disable-dependency-tracking \
         --without-qt \
         --without-doc \
         --prefix="$(PREFIX)" \
-        $(LIBTA_OPTIONS) \
+        $(LIBTTFAUTOHINT_OPTIONS) \
         --with-freetype-config="$(PREFIX)/bin/freetype-config" \
         CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
         CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
@@ -94,12 +103,25 @@ $(BUILD)/.ttfautohint: $(BUILD)/.harfbuzz
         PKG_CONFIG=true \
         HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
         HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz"
-	cd $(BUILD)/ttfautohint; make
-	cd $(BUILD)/ttfautohint; make install
-	touch $(BUILD)/.ttfautohint
+	cd $(TMP)/ttfautohint; make
+	cd $(TMP)/ttfautohint; make install
+	touch $(TMP)/.ttfautohint
+
+$(BUILD)/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint
+ifeq ($(OS), Windows_NT)
+	dllwrap -v --def $(SRC)/ttfautohint.def -o $@ \
+        $(TMP)/ttfautohint/lib/.libs/libttfautohint.a \
+        $(TMP)/ttfautohint/lib/.libs/libsds.a \
+        $(TMP)/ttfautohint/lib/.libs/libnumberset.a \
+        $(TMP)/ttfautohint/gnulib/src/.libs/libgnu.a \
+        $(PREFIX)/lib/libharfbuzz.a \
+        $(PREFIX)/lib/libfreetype.a
+else
+	cp $(PREFIX)/lib/$(LIBTTFAUTOHINT) $@
+endif
 
 clean:
 	@git submodule foreach git clean -fdx .
 	@rm -rf build
 
-.PHONY: clean all freetype harfbuzz ttfautohint
+.PHONY: clean all dll freetype harfbuzz ttfautohint
