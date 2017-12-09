@@ -117,7 +117,7 @@ ifeq ($(OS), Windows_NT)
         $(PREFIX)/lib/libharfbuzz.a \
         $(PREFIX)/lib/libfreetype.a
 else
-	cp $(PREFIX)/lib/$(LIBTTFAUTOHINT) $@
+	@cp $(PREFIX)/lib/$(LIBTTFAUTOHINT) $@
 endif
 
 clean:
