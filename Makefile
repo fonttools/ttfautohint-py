@@ -24,9 +24,9 @@ ifeq ($(OS), Windows_NT)
   LIBTTFAUTOHINT := "ttfautohint.dll"
 else
   LIBTTFAUTOHINT_OPTIONS += --enable-shared
-  ifeq ($shell uname -s, Darwin)
+  ifeq ($(shell uname -s), Darwin)
     LIBTTFAUTOHINT := "libttfautohint.dylib"
-  else ifeq ($shell uname -s, Linux)
+  else ifeq ($(shell uname -s), Linux)
     LIBTTFAUTOHINT := "libttfautohint.so"
   endif
 endif
