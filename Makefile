@@ -9,9 +9,9 @@ BUILD := $(ROOT)/build/$(PLATFORM)/temp
 PREFIX := $(ROOT)/build/$(PLATFORM)/local
 
 CPPFLAGS := -I$(PREFIX)/include
-CFLAGS := -g -O2 -fPIC
-CXXFLAGS := -g -O2 -fPIC
-LDFLAGS := -fPIC -L$(PREFIX)/lib -L$(PREFIX)/lib64
+CFLAGS := -g -O2
+CXXFLAGS := -g -O2
+LDFLAGS := -L$(PREFIX)/lib -L$(PREFIX)/lib64
 
 all: ttfautohint
 
@@ -75,6 +75,8 @@ $(BUILD)/.ttfautohint: $(BUILD)/.harfbuzz
         --without-qt \
         --without-doc \
         --prefix="$(PREFIX)" \
+        --enable-static \
+        --disable-shared \
         --with-freetype-config="$(PREFIX)/bin/freetype-config" \
         CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
         CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
@@ -83,7 +85,7 @@ $(BUILD)/.ttfautohint: $(BUILD)/.harfbuzz
         HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
         HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz"
 	cd $(BUILD)/ttfautohint; make LDFLAGS="$(LDFLAGS)"
-	cd $(BUILD)/ttfautohint; make install
+	cd $(BUILD)/ttfautohint; make install-strip
 	touch $(BUILD)/.ttfautohint
 
 clean:
