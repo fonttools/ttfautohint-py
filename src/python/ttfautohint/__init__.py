@@ -143,20 +143,22 @@ def ttfautohint(**kwargs):
     elif reference_buffer is not None:
         reference_buffer = bytes(reference_buffer)
 
-    out_buffer_p = POINTER(c_char)()
-    out_buffer_len = c_size_t(0)
-    error_string = c_char_p()
-
-    default_script = tobytes(options.pop('default_script'))
-    fallback_script = tobytes(options.pop('fallback_script'))
-
     reference_name = options.pop('reference_name')
     if reference_name is not None:
         reference_name = tobytes(reference_name)
 
+    default_script = tobytes(options.pop('default_script'))
+    fallback_script = tobytes(options.pop('fallback_script'))
+    x_height_snapping_exceptions = tobytes(
+        options.pop('x_height_snapping_exceptions'))
+
     epoch = options.pop('epoch')
     if epoch is not None:
         epoch = c_ulonglong(epoch)
+
+    out_buffer_p = POINTER(c_char)()
+    out_buffer_len = c_size_t(0)
+    error_string = c_char_p()
 
     option_keys, option_values = _format_varargs(
         in_buffer=in_buffer,
@@ -166,6 +168,9 @@ def ttfautohint(**kwargs):
         control_buffer=control_buffer,
         reference_buffer=reference_buffer,
         reference_name=reference_name,
+        default_script=default_script,
+        fallback_script=fallback_script,
+        x_height_snapping_exceptions=x_height_snapping_exceptions,
         epoch=epoch,
         error_string=byref(error_string),
         **options
