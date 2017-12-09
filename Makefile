@@ -13,6 +13,17 @@ CFLAGS := -g -O2 -fPIC
 CXXFLAGS := -g -O2 -fPIC
 LDFLAGS := -fPIC -L$(PREFIX)/lib -L$(PREFIX)/lib64
 
+# on Windows, libtool cannot be used to build the ttfautohint.dll, we run
+# dllwrap ourselves on the static libraries, so we --disable-shared
+# https://lists.gnu.org/archive/html/freetype-devel/2017-12/msg00013.html
+# http://lists.gnu.org/archive/html/libtool/2017-12/msg00003.html
+LIBTA_OPTIONS := --enable-static
+ifeq ($(OS), Windows_NT)
+  LIBTA_OPTIONS += --disable-shared
+else
+  LIBTA_OPTIONS += --enable-shared
+endif
+
 all: ttfautohint
 
 freetype: $(BUILD)/.freetype
@@ -75,6 +86,7 @@ $(BUILD)/.ttfautohint: $(BUILD)/.harfbuzz
         --without-qt \
         --without-doc \
         --prefix="$(PREFIX)" \
+        $(LIBTA_OPTIONS) \
         --with-freetype-config="$(PREFIX)/bin/freetype-config" \
         CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
         CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
@@ -82,11 +94,12 @@ $(BUILD)/.ttfautohint: $(BUILD)/.harfbuzz
         PKG_CONFIG=true \
         HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
         HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz"
-	cd $(BUILD)/ttfautohint; make LDFLAGS="$(LDFLAGS)"
+	cd $(BUILD)/ttfautohint; make
 	cd $(BUILD)/ttfautohint; make install
 	touch $(BUILD)/.ttfautohint
 
 clean:
+	@git submodule foreach git clean -fdx .
 	@rm -rf build
 
 .PHONY: clean all freetype harfbuzz ttfautohint
