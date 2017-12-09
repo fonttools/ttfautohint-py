@@ -1,0 +1,3 @@
+LIBRARY ttfautohint.dll
+EXPORTS
+TTF_autohint
