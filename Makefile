@@ -110,10 +110,7 @@ $(TMP)/.ttfautohint: $(TMP)/.harfbuzz
 $(BUILD)/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint
 ifeq ($(OS), Windows_NT)
 	dllwrap -v --def $(SRC)/ttfautohint.def -o $@ \
-        $(TMP)/ttfautohint/lib/.libs/libttfautohint.a \
-        $(TMP)/ttfautohint/lib/.libs/libsds.a \
-        $(TMP)/ttfautohint/lib/.libs/libnumberset.a \
-        $(TMP)/ttfautohint/gnulib/src/.libs/libgnu.a \
+        $(PREFIX)/lib/libttfautohint.a \
         $(PREFIX)/lib/libharfbuzz.a \
         $(PREFIX)/lib/libfreetype.a
 else
