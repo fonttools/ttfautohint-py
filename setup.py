@@ -1,7 +1,6 @@
 from __future__ import print_function, absolute_import
 from setuptools import setup, find_packages, Extension, Command
 from setuptools.command.build_ext import build_ext
-from distutils.sysconfig import get_config_var
 from distutils.file_util import copy_file
 from distutils.dir_util import mkpath
 from distutils import log
@@ -12,7 +11,12 @@ import subprocess
 
 NAME = "ttfautohint"
 LIB_NAME = "lib" + NAME
-LIB_SUFFIX = get_config_var('SHLIB_SUFFIX') or get_config_var('SO')
+if sys.platform == "darwin":
+    LIB_SUFFIX = ".dylib"
+elif sys.platform == "win32":
+    LIB_SUFFIX = ".dll"
+else:
+    LIB_SUFFIX = ".so"
 LIB_FILENAME = LIB_NAME + LIB_SUFFIX
 HERE = os.path.dirname(__file__)
 LIB_DIR = os.path.join(HERE, "build", "local", "lib")
