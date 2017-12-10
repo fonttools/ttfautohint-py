@@ -7,7 +7,6 @@
 [submodule "src/c/ttfautohint"]
 	path = src/c/ttfautohint
 	url = https://github.com/fonttools/ttfautohint
-	branch = shared-lib
 [submodule "ci/multibuild"]
 	path = ci/multibuild
 	url = https://github.com/matthew-brett/multibuild
