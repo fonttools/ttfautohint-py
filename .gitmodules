@@ -4,9 +4,6 @@
 [submodule "src/c/harfbuzz"]
 	path = src/c/harfbuzz
 	url = https://github.com/harfbuzz/harfbuzz
-[submodule "src/c/ttfautohint"]
-	path = src/c/ttfautohint
-	url = https://github.com/fonttools/ttfautohint
 [submodule "ci/multibuild"]
 	path = ci/multibuild
 	url = https://github.com/matthew-brett/multibuild
