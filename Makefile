@@ -59,7 +59,7 @@ $(TMP)/.freetype:
         LDFLAGS="$(LDFLAGS)"
 	cd $(TMP)/freetype; make
 	cd $(TMP)/freetype; make install
-	touch $(TMP)/.freetype
+	@touch $(TMP)/.freetype
 
 $(TMP)/.harfbuzz: $(TMP)/.freetype
 	cd $(SRC)/harfbuzz; ./autogen.sh
@@ -84,7 +84,7 @@ $(TMP)/.harfbuzz: $(TMP)/.freetype
         FREETYPE_LIBS="$(LDFLAGS) -lfreetype"
 	cd $(TMP)/harfbuzz; make
 	cd $(TMP)/harfbuzz; make install
-	touch $(TMP)/.harfbuzz
+	@touch $(TMP)/.harfbuzz
 
 $(TMP)/.ttfautohint: $(TMP)/.harfbuzz
 	cd $(SRC)/ttfautohint; ./bootstrap
@@ -105,7 +105,7 @@ $(TMP)/.ttfautohint: $(TMP)/.harfbuzz
         HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz"
 	cd $(TMP)/ttfautohint; make
 	cd $(TMP)/ttfautohint; make install
-	touch $(TMP)/.ttfautohint
+	@touch $(TMP)/.ttfautohint
 
 $(BUILD)/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint
 ifeq ($(OS), Windows_NT)
