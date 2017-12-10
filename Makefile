@@ -102,7 +102,7 @@ $(TMP)/.ttfautohint: $(TMP)/.harfbuzz
         LDFLAGS="$(LDFLAGS)" \
         PKG_CONFIG=true \
         HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
-        HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz"
+        HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz -lfreetype"
 	cd $(TMP)/ttfautohint; make
 	cd $(TMP)/ttfautohint; make install
 	@touch $(TMP)/.ttfautohint
