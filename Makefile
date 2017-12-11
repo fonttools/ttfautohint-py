@@ -1,11 +1,8 @@
-# use different build dirs for different python platforms
-PYTHON := python
-PLATFORM := $(shell $(PYTHON) -c \
-    "import sysconfig; print(sysconfig.get_platform())")
+LIB_NAME := "libttfautohint"
 
 ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SRC := $(ROOT)/src/c
-BUILD := $(ROOT)/build/$(PLATFORM)
+BUILD := $(ROOT)/build/
 TMP := $(BUILD)/temp
 PREFIX := $(BUILD)/local
 
@@ -21,23 +18,23 @@ LDFLAGS := -fPIC -L$(PREFIX)/lib -L$(PREFIX)/lib64
 LIBTTFAUTOHINT_OPTIONS := --enable-static
 ifeq ($(OS), Windows_NT)
   LIBTTFAUTOHINT_OPTIONS += --disable-shared
-  LIBTTFAUTOHINT := "ttfautohint.dll"
+  LIBTTFAUTOHINT := "$(LIB_NAME).dll"
 else
   LIBTTFAUTOHINT_OPTIONS += --enable-shared
   ifeq ($(shell uname -s), Darwin)
-    LIBTTFAUTOHINT := "libttfautohint.dylib"
-	# on macOS, we want a "universal" Mach-O binary (both 32 and 64 bit)
-	CFLAGS   += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
-	CXXFLAGS += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
-	LDFLAGS  += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
+    LIBTTFAUTOHINT := "$(LIB_NAME).dylib"
+    # on macOS, we want a "universal" Mach-O binary (both 32 and 64 bit)
+    CFLAGS   += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
+    CXXFLAGS += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
+    LDFLAGS  += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
   else ifeq ($(shell uname -s), Linux)
-    LIBTTFAUTOHINT := "libttfautohint.so"
+    LIBTTFAUTOHINT := "$(LIB_NAME).so"
   endif
 endif
 
 all: dll
 
-dll: $(BUILD)/$(LIBTTFAUTOHINT)
+dll: $(PREFIX)/lib/$(LIBTTFAUTOHINT)
 
 freetype: $(TMP)/.freetype
 
@@ -111,14 +108,12 @@ $(TMP)/.ttfautohint: $(TMP)/.harfbuzz
 	cd $(TMP)/ttfautohint; make install
 	@touch $(TMP)/.ttfautohint
 
-$(BUILD)/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint
+$(PREFIX)/lib/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint
 ifeq ($(OS), Windows_NT)
 	dllwrap -v --def $(SRC)/ttfautohint.def -o $@ \
         $(PREFIX)/lib/libttfautohint.a \
         $(PREFIX)/lib/libharfbuzz.a \
         $(PREFIX)/lib/libfreetype.a
-else
-	@cp $(PREFIX)/lib/$(LIBTTFAUTOHINT) $@
 endif
 
 clean:
