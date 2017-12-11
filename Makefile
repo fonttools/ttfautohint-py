@@ -26,6 +26,10 @@ else
   LIBTTFAUTOHINT_OPTIONS += --enable-shared
   ifeq ($(shell uname -s), Darwin)
     LIBTTFAUTOHINT := "libttfautohint.dylib"
+	# on macOS, we want a "universal" Mach-O binary (both 32 and 64 bit)
+	CFLAGS   += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
+	CXXFLAGS += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
+	LDFLAGS  += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
   else ifeq ($(shell uname -s), Linux)
     LIBTTFAUTOHINT := "libttfautohint.so"
   endif
