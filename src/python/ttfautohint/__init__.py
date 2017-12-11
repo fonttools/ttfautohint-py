@@ -6,6 +6,7 @@ from ctypes import (
 
 from io import BytesIO, open
 import sys
+import os
 
 
 __all__ = ["ttfautohint", "TAError"]
@@ -26,16 +27,23 @@ def tobytes(s, encoding="ascii", errors="strict"):
         raise TypeError("not expecting type '%s'" % type(s))
 
 
-# TODO: load embedded libttfautohint DLL using relative path
 if sys.platform == "win32":
-    libttfautohint = cdll.LoadLibrary("ttfautohint.dll")
+    libttfautohint_name = "ttfautohint.dll"
     libc = cdll.msvcrt
-elif sys.platform == "darwin":
-    libttfautohint = cdll.LoadLibrary("libttfautohint.dylib")
-    libc = cdll.LoadLibrary("libc.dylib")
 else:
-    libttfautohint = cdll.LoadLibrary("libttfautohint.so")
-    libc = cdll.LoadLibrary("libc.so.6")
+    from ctypes.util import find_library
+    libc_path = find_library("c")
+    if libc_path is None:
+        raise OSError("Could not find the libc shared library")
+    libc = cdll.LoadLibrary(libc_path)
+    if sys.platform == "darwin":
+        libttfautohint_name = "libttfautohint.dylib"
+    else:
+        libttfautohint_name = "libttfautohint.so"
+
+libttfautohint_path = os.path.join(os.path.dirname(__file__),
+                                   libttfautohint_name)
+libttfautohint = cdll.LoadLibrary(libttfautohint_path)
 
 libc.free.argtypes = [c_void_p]
 libc.free.restype = None
