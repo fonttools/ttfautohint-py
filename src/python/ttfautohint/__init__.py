@@ -6,6 +6,21 @@ from io import BytesIO
 import sys
 
 
+try:  # PY2
+    text_type = unicode
+except NameError:  # PY3
+    text_type = str
+
+
+def tobytes(s, encoding="ascii", errors="strict"):
+    if isinstance(s, text_type):
+        return s.encode(encoding, errors)
+    elif isinstance(s, bytes):
+        return s
+    else:
+        raise TypeError("not expecting type '%s'" % type(s))
+
+
 # TODO: load embedded libttfautohint DLL using relative path
 if sys.platform == "win32":
     libttfautohint = cdll.LoadLibrary("ttfautohint.dll")
@@ -64,13 +79,6 @@ class TAError(Exception):
         return "%d: %s" % (self.rv, self.error_string.value.decode('ascii'))
 
 
-def tobytes(s, encoding='ascii', errors='strict'):
-    if not isinstance(s, bytes):
-        return s.encode(encoding, errors)
-    else:
-        return s
-
-
 def _validate_options(kwargs):
     opts = {k: kwargs.pop(k, OPTIONS[k]) for k in OPTIONS}
     if kwargs:
@@ -112,12 +120,13 @@ def ttfautohint(**kwargs):
     in_file, in_buffer = options.pop('in_file'), options.pop('in_buffer')
     if in_file is not None:
         if hasattr(in_file, 'read'):
-            in_buffer = bytes(in_file.read())
+            in_buffer = in_file.read()
         else:
             with open(in_file, "rb") as f:
                 in_buffer = f.read()
-    else:
-        in_buffer = bytes(in_buffer)
+    if not isinstance(in_buffer, bytes):
+        raise TypeError("in_buffer type must be bytes, not %s"
+                        % type(in_buffer).__name__)
     in_buffer_len = len(in_buffer)
 
     out_file = options.pop('out_file')
@@ -126,15 +135,19 @@ def ttfautohint(**kwargs):
     control_buffer = options.pop('control_buffer')
     if control_file is not None:
         control_buffer = control_file.read()
-    elif control_buffer is not None:
-        control_buffer = bytes(control_buffer)
+    if control_buffer is not None:
+        if not isinstance(control_buffer, bytes):
+            raise TypeError("control_buffer type must be bytes, not %s"
+                            % type(control_buffer).__name__)
 
     reference_file = options.pop('reference_file')
     reference_buffer = options.pop('reference_buffer')
     if reference_file is not None:
         reference_buffer = reference_file.read()
-    elif reference_buffer is not None:
-        reference_buffer = bytes(reference_buffer)
+    if reference_buffer is not None:
+        if not isinstance(reference_buffer, bytes):
+            raise TypeError("reference_buffer type must be bytes, not %s"
+                            % type(reference_buffer).__name__)
 
     reference_name = options.pop('reference_name')
     if reference_name is not None:
