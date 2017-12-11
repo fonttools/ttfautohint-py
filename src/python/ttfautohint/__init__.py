@@ -28,7 +28,7 @@ def tobytes(s, encoding="ascii", errors="strict"):
 
 
 if sys.platform == "win32":
-    libttfautohint_name = "ttfautohint.dll"
+    libttfautohint_name = "libttfautohint.dll"
     libc = cdll.msvcrt
 else:
     from ctypes.util import find_library
