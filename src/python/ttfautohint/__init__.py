@@ -1,9 +1,14 @@
+from __future__ import print_function, division, absolute_import
+
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
     byref)
 
-from io import BytesIO
+from io import BytesIO, open
 import sys
+
+
+__all__ = ["ttfautohint", "TAError"]
 
 
 try:  # PY2
@@ -87,21 +92,66 @@ def _validate_options(kwargs):
                 "s" if len(kwargs) > 1 else "",
                 ", ".join(repr(k) for k in kwargs)))
 
-    in_file, in_buffer = opts["in_file"], opts["in_buffer"]
+    in_file, in_buffer = opts.pop("in_file"), opts.pop("in_buffer")
     if in_file is None and in_buffer is None:
         raise ValueError("No input file or buffer provided")
     elif in_file is not None and in_buffer is not None:
         raise ValueError("in_file and in_buffer are mutually exclusive")
+    if in_file is not None:
+        try:
+            in_buffer = in_file.read()
+        except AttributeError:
+            with open(in_file, "rb") as f:
+                in_buffer = f.read()
+    if not isinstance(in_buffer, bytes):
+        raise TypeError("in_buffer type must be bytes, not %s"
+                        % type(in_buffer).__name__)
+    opts['in_buffer'] = in_buffer
+    opts['in_buffer_len'] = len(in_buffer)
 
-    if (opts["control_file"] is not None
-            and opts["control_buffer"] is not None):
-        raise ValueError(
-            "control_file and control_buffer are mutually exclusive")
+    control_file = opts.pop('control_file')
+    control_buffer = opts.pop('control_buffer')
+    if control_file is not None:
+        if control_buffer is not None:
+            raise ValueError(
+                "control_file and control_buffer are mutually exclusive")
+        try:
+            control_buffer = control_file.read()
+        except AttributeError:
+            with open(control_file, "rb") as f:
+                control_buffer = f.read()
+    if control_buffer is not None:
+        if not isinstance(control_buffer, bytes):
+            raise TypeError("control_buffer type must be bytes, not %s"
+                            % type(control_buffer).__name__)
+        opts['control_buffer'] = control_buffer
+        opts['control_buffer_len'] = len(control_buffer)
 
-    if (opts["reference_file"] is not None
-            and opts["reference_buffer"] is not None):
-        raise ValueError(
-            "reference_file and reference_buffer are mutually exclusive")
+    reference_file = opts.pop('reference_file')
+    reference_buffer = opts.pop('reference_buffer')
+    if reference_file is not None:
+        if reference_buffer is not None:
+            raise ValueError(
+                "reference_file and reference_buffer are mutually exclusive")
+        try:
+            reference_buffer = reference_file.read()
+        except AttributeError:
+            with open(reference_file, "rb") as f:
+                reference_buffer = f.read()
+    if reference_buffer is not None:
+        if not isinstance(reference_buffer, bytes):
+            raise TypeError("reference_buffer type must be bytes, not %s"
+                            % type(reference_buffer).__name__)
+        opts['reference_buffer'] = reference_buffer
+        opts['reference_buffer_len'] = len(reference_buffer)
+
+    for key in ('reference_name', 'default_script', 'fallback_script',
+                'x_height_snapping_exceptions'):
+        if opts[key] is not None:
+            opts[key] = tobytes(opts[key])
+
+    if opts['epoch'] is not None:
+        opts['epoch'] = c_ulonglong(epoc)
 
     return opts
 
@@ -117,67 +167,16 @@ def _format_varargs(**kwargs):
 def ttfautohint(**kwargs):
     options = _validate_options(kwargs)
 
-    in_file, in_buffer = options.pop('in_file'), options.pop('in_buffer')
-    if in_file is not None:
-        if hasattr(in_file, 'read'):
-            in_buffer = in_file.read()
-        else:
-            with open(in_file, "rb") as f:
-                in_buffer = f.read()
-    if not isinstance(in_buffer, bytes):
-        raise TypeError("in_buffer type must be bytes, not %s"
-                        % type(in_buffer).__name__)
-    in_buffer_len = len(in_buffer)
-
+    # pop 'out_file' from options dict since we use 'out_buffer'
     out_file = options.pop('out_file')
-
-    control_file = options.pop('control_file')
-    control_buffer = options.pop('control_buffer')
-    if control_file is not None:
-        control_buffer = control_file.read()
-    if control_buffer is not None:
-        if not isinstance(control_buffer, bytes):
-            raise TypeError("control_buffer type must be bytes, not %s"
-                            % type(control_buffer).__name__)
-
-    reference_file = options.pop('reference_file')
-    reference_buffer = options.pop('reference_buffer')
-    if reference_file is not None:
-        reference_buffer = reference_file.read()
-    if reference_buffer is not None:
-        if not isinstance(reference_buffer, bytes):
-            raise TypeError("reference_buffer type must be bytes, not %s"
-                            % type(reference_buffer).__name__)
-
-    reference_name = options.pop('reference_name')
-    if reference_name is not None:
-        reference_name = tobytes(reference_name)
-
-    default_script = tobytes(options.pop('default_script'))
-    fallback_script = tobytes(options.pop('fallback_script'))
-    x_height_snapping_exceptions = tobytes(
-        options.pop('x_height_snapping_exceptions'))
-
-    epoch = options.pop('epoch')
-    if epoch is not None:
-        epoch = c_ulonglong(epoch)
 
     out_buffer_p = POINTER(c_char)()
     out_buffer_len = c_size_t(0)
     error_string = c_char_p()
 
     option_keys, option_values = _format_varargs(
-        in_buffer=in_buffer,
-        in_buffer_len=in_buffer_len,
         out_buffer=byref(out_buffer_p),
         out_buffer_len=byref(out_buffer_len),
-        control_buffer=control_buffer,
-        reference_buffer=reference_buffer,
-        reference_name=reference_name,
-        default_script=default_script,
-        fallback_script=fallback_script,
-        x_height_snapping_exceptions=x_height_snapping_exceptions,
-        epoch=epoch,
         error_string=byref(error_string),
         **options
     )
