@@ -24,7 +24,6 @@ OPTIONS = dict(
     in_file=None,
     in_buffer=None,
     out_file=None,
-    out_buffer=None,
     control_file=None,
     control_buffer=None,
     reference_file=None,
@@ -86,12 +85,6 @@ def _validate_options(kwargs):
     elif in_file is not None and in_buffer is not None:
         raise ValueError("in_file and in_buffer are mutually exclusive")
 
-    out_file, out_buffer = opts["out_file"], opts["out_buffer"]
-    if out_file is None and out_buffer is None:
-        raise ValueError("No output file or buffer provided")
-    elif out_file is not None and out_buffer is not None:
-        raise ValueError("out_file and out_buffer are mutually exclusive")
-
     if (opts["control_file"] is not None
             and opts["control_buffer"] is not None):
         raise ValueError(
@@ -127,7 +120,7 @@ def ttfautohint(**kwargs):
         in_buffer = bytes(in_buffer)
     in_buffer_len = len(in_buffer)
 
-    out_file, out_buffer = options.pop('out_file'), options.pop('out_buffer')
+    out_file = options.pop('out_file')
 
     control_file = options.pop('control_file')
     control_buffer = options.pop('control_buffer')
@@ -189,9 +182,9 @@ def ttfautohint(**kwargs):
 
     if out_file is not None:
         if hasattr(out_file, 'write'):
-            out_file.write(data)
+            return out_file.write(data)
         else:
             with open(out_file, 'wb') as f:
-                f.write(data)
+                return f.write(data)
     else:
-        out_buffer.extend(data)
+        return data
