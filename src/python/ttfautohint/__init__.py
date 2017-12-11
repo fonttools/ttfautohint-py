@@ -116,7 +116,7 @@ def _format_varargs(**kwargs):
 def ttfautohint(**kwargs):
     options = _validate_options(kwargs)
 
-    in_file = options.pop('in_file')
+    in_file, in_buffer = options.pop('in_file'), options.pop('in_buffer')
     if in_file is not None:
         if hasattr(in_file, 'read'):
             in_buffer = bytes(in_file.read())
@@ -124,12 +124,10 @@ def ttfautohint(**kwargs):
             with open(in_file, "rb") as f:
                 in_buffer = f.read()
     else:
-        in_buffer = bytes(options.pop('in_buffer'))
+        in_buffer = bytes(in_buffer)
     in_buffer_len = len(in_buffer)
 
-    out_file = options.pop('out_file')
-    if out_file is None:
-        out_buffer = options.pop('out_buffer')
+    out_file, out_buffer = options.pop('out_file'), options.pop('out_buffer')
 
     control_file = options.pop('control_file')
     control_buffer = options.pop('control_buffer')
@@ -170,7 +168,7 @@ def ttfautohint(**kwargs):
         reference_name=reference_name,
         epoch=epoch,
         error_string=byref(error_string),
-        **options,
+        **options
     )
 
     rv = libttfautohint.TTF_autohint(option_keys, *option_values)
