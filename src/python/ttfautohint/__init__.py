@@ -198,7 +198,9 @@ def ttfautohint(**kwargs):
     data = out_buffer_p[:out_buffer_len.value]
     assert len(data) == out_buffer_len.value
 
-    libc.free(out_buffer_p)
+    if out_buffer_p:
+        libc.free(out_buffer_p)
+        out_buffer_p = None
 
     if out_file is not None:
         try:
