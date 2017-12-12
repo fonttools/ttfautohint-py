@@ -75,11 +75,8 @@ class DummyBuildExt(build_ext):
         self.force = False
 
     def get_ext_fullpath(self, ext_name):
-        for ext in self.distribution.ext_modules:
-            if ext.name == ext_name:
-                lib_filename = getattr(ext, '_lib_filename', None)
-                break
-        else:
+        lib_filename = self._get_lib_filename(ext_name)
+        if lib_filename is None:
             return build_ext.get_ext_fullpath(self, ext_name)
 
         if not self.inplace:
@@ -88,6 +85,17 @@ class DummyBuildExt(build_ext):
         build_py = self.get_finalized_command('build_py')
         package_dir = os.path.abspath(build_py.get_package_dir(NAME))
         return os.path.join(package_dir, lib_filename)
+
+    def get_ext_filename(self, ext_name):
+        lib_filename = self._get_lib_filename(ext_name)
+        if lib_filename is None:
+            return build_ext.get_ext_filename(self, ext_name)
+        return os.path.join(NAME, lib_filename)
+
+    def _get_lib_filename(self, ext_name):
+        for ext in self.distribution.ext_modules:
+            if ext.name == ext_name:
+                return getattr(ext, '_lib_filename', None)
 
     def run(self):
         self.run_command("build_shlib")
