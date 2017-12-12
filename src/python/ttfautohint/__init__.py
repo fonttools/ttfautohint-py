@@ -201,9 +201,9 @@ def ttfautohint(**kwargs):
     libc.free(out_buffer_p)
 
     if out_file is not None:
-        if hasattr(out_file, 'write'):
+        try:
             return out_file.write(data)
-        else:
+        except AttributeError:
             with open(out_file, 'wb') as f:
                 return f.write(data)
     else:
