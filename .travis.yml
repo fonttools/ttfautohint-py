@@ -62,8 +62,8 @@ matrix:
         - MB_PYTHON_VERSION=3.6
 
 before_install:
-    - source multibuild/common_utils.sh
-    - source multibuild/travis_steps.sh
+    - source ci/multibuild/common_utils.sh
+    - source ci/multibuild/travis_steps.sh
     - before_install
 
 install:
