@@ -1,6 +1,10 @@
 # Define custom utilities
 # Test for OSX with [ -n "$IS_OSX" ]
 
+if [ -n "$IS_OSX"]; then
+	export PATH="/usr/local/opt/bison/bin/:/usr/local/opt/flex/bin/:/usr/local/opt/libtool/bin/:$PATH"
+fi
+
 function pre_build {
     # Any stuff that you need to do before you start building the wheels
     # Runs in the root directory of this repository.
