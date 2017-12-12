@@ -12,12 +12,12 @@ function pre_build {
         brew install flex
         brew install ragel
     else
-        yum install autoconf
-        yum install automake
-        yum install libtool
-        yum install bison
-        yum install flex
-        yum install ragel
+        yum -y install autoconf
+        yum -y install automake
+        yum -y install libtool
+        yum -y install bison
+        yum -y install flex
+        yum -y install ragel
     fi
 }
 
