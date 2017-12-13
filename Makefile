@@ -32,17 +32,17 @@ else
   endif
 endif
 
-all: dll
+all: libttfautohint
 
-dll: $(PREFIX)/lib/$(LIBTTFAUTOHINT)
+libttfautohint: $(PREFIX)/lib/$(LIBTTFAUTOHINT)
 
-freetype: $(TMP)/.freetype
+freetype: $(TMP)/.freetype-stamp
 
-harfbuzz: $(TMP)/.harfbuzz
+harfbuzz: $(TMP)/.harfbuzz-stamp
 
-ttfautohint: $(TMP)/.ttfautohint
+ttfautohint: $(TMP)/.ttfautohint-stamp
 
-$(TMP)/.freetype:
+$(TMP)/.freetype-stamp:
 	cd $(SRC)/freetype2; ./autogen.sh
 	@rm -rf $(TMP)/freetype
 	@mkdir -p $(TMP)/freetype
@@ -60,9 +60,9 @@ $(TMP)/.freetype:
         LDFLAGS="$(LDFLAGS)"
 	cd $(TMP)/freetype; make
 	cd $(TMP)/freetype; make install
-	@touch $(TMP)/.freetype
+	@touch $(TMP)/.freetype-stamp
 
-$(TMP)/.harfbuzz: $(TMP)/.freetype
+$(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
 	cd $(SRC)/harfbuzz; ./autogen.sh
 	cd $(SRC)/harfbuzz; make distclean
 	@rm -rf $(TMP)/harfbuzz
@@ -85,9 +85,9 @@ $(TMP)/.harfbuzz: $(TMP)/.freetype
         FREETYPE_LIBS="$(LDFLAGS) -lfreetype"
 	cd $(TMP)/harfbuzz; make
 	cd $(TMP)/harfbuzz; make install
-	@touch $(TMP)/.harfbuzz
+	@touch $(TMP)/.harfbuzz-stamp
 
-$(TMP)/.ttfautohint: $(TMP)/.harfbuzz
+$(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
 	cd $(SRC)/ttfautohint; ./bootstrap
 	@rm -rf $(TMP)/ttfautohint
 	@mkdir -p $(TMP)/ttfautohint
@@ -106,9 +106,9 @@ $(TMP)/.ttfautohint: $(TMP)/.harfbuzz
         HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz -lfreetype"
 	cd $(TMP)/ttfautohint; make
 	cd $(TMP)/ttfautohint; make install
-	@touch $(TMP)/.ttfautohint
+	@touch $(TMP)/.ttfautohint-stamp
 
-$(PREFIX)/lib/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint
+$(PREFIX)/lib/$(LIBTTFAUTOHINT): $(TMP)/.ttfautohint-stamp
 ifeq ($(OS), Windows_NT)
 	dllwrap -v --def $(SRC)/ttfautohint.def -o $@ \
         $(PREFIX)/lib/libttfautohint.a \
@@ -120,4 +120,4 @@ clean:
 	@git submodule foreach git clean -fdx .
 	@rm -rf build
 
-.PHONY: clean all dll freetype harfbuzz ttfautohint
+.PHONY: clean all libttfautohint freetype harfbuzz ttfautohint
