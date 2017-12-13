@@ -79,7 +79,7 @@ libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
 
 
 setup(
-    name="ttfautohint-python",
+    name="ttfautohint-py",
     version='0.1.0.dev0',
     package_dir={'': 'src/python'},
     packages=find_packages('src/python'),
