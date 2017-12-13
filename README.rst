@@ -3,7 +3,7 @@ ttfautohint-py
 
 ``ttfautohint-py`` is a Python wrapper for `ttfautohint
 <https://www.freetype.org/ttfautohint>`__, a free auto-hinter for TrueType fonts
-created by Werner Lemberg (`@lemzwerg <https://github/lemzwerg>`).
+created by Werner Lemberg (`@lemzwerg <https://github/lemzwerg>`__).
 
 It uses `ctypes <https://docs.python.org/3/library/ctypes.html>`__ to load the
 ``libttfautohint`` shared library and call the ``TTF_autohint`` function.
