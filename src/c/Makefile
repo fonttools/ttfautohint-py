@@ -1,7 +1,7 @@
 LIB_NAME := "libttfautohint"
 
-ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-SRC := $(ROOT)/src/c
+SRC := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+ROOT := $(shell dirname $(shell dirname $(SRC)))
 BUILD := $(ROOT)/build
 TMP := $(BUILD)/temp
 PREFIX := $(BUILD)/local
