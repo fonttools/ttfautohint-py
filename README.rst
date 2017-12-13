@@ -8,12 +8,12 @@ created by Werner Lemberg (`@lemzwerg <https://github/lemzwerg>`__).
 It uses `ctypes <https://docs.python.org/3/library/ctypes.html>`__ to load the
 ``libttfautohint`` shared library and call the ``TTF_autohint`` function.
 
-The binary wheel packages are available for Linux (``manylinux1``), macOS and
+Binary "wheel" packages are available for Linux (``manylinux1``), macOS and
 Windows. These include a precompiled ``libttfautohint.so`` (``*.dylib`` on
-macOS, or ``*.dll`` on Windows) which does not have any other dependency apart
-from system libraries. The `FreeType <https://www.freetype.org>`__ and the
-`HarfBuzz <https://github.com/harfbuzz/harfbuzz>`__ libraries are compiled from
-source as static libraries and embedded in the ``libttfautohint`` library.
+macOS, or ``*.dll`` on Windows) shared library which has no other dependency
+apart from system libraries. The `FreeType <https://www.freetype.org>`__ and
+the `HarfBuzz <https://github.com/harfbuzz/harfbuzz>`__ libraries are compiled
+from source as static libraries and embedded in ``libttfautohint``.
 
 To compile the ``libttfautohint.dll`` from source on Windows, you need to
 install `MSYS2 <http://www.msys2.org/>`__ and the latest MinGW-w64 toolchain.
