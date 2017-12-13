@@ -2,7 +2,7 @@ LIB_NAME := "libttfautohint"
 
 ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SRC := $(ROOT)/src/c
-BUILD := $(ROOT)/build/
+BUILD := $(ROOT)/build
 TMP := $(BUILD)/temp
 PREFIX := $(BUILD)/local
 
@@ -118,6 +118,6 @@ endif
 
 clean:
 	@git submodule foreach git clean -fdx .
-	@rm -rf build
+	@rm -rf $(TMP) $(PREFIX)
 
 .PHONY: clean all libttfautohint freetype harfbuzz ttfautohint
