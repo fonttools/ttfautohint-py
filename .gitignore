@@ -1,0 +1,27 @@
+# compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.dylib
+
+# Distribution / Packaging
+*.egg
+*.egg-info
+*.eggs
+MANIFEST
+build
+dist
+
+# Unit test / coverage files
+.tox/*
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# emacs backup files
+*~
+
+# OSX Finder
+.DS_Store
