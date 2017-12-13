@@ -14,8 +14,9 @@ function pre_build {
     # Runs in the root directory of this repository.
     if [ -n "$IS_OSX" ]; then
         echo $PATH
-        which libtool
-        libtool --version
+        brew install libtool ragel flex bison
+        which glibtool
+        glibtool --version
         which ragel
         ragel --version
         which flex
