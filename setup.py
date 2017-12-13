@@ -1,5 +1,5 @@
 from __future__ import print_function, absolute_import
-from setuptools import setup, find_packages, Extension, Command
+from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 from distutils.file_util import copy_file
 from distutils.dir_util import mkpath
@@ -7,20 +7,6 @@ from distutils import log
 import os
 import sys
 import subprocess
-
-
-NAME = "ttfautohint"
-LIB_NAME = "lib" + NAME
-if sys.platform == "darwin":
-    LIB_SUFFIX = ".dylib"
-elif sys.platform == "win32":
-    LIB_SUFFIX = ".dll"
-else:
-    LIB_SUFFIX = ".so"
-LIB_FILENAME = LIB_NAME + LIB_SUFFIX
-HERE = os.path.dirname(__file__)
-LIB_DIR = os.path.join(HERE, "build", "local", "lib")
-EMPTY_C = os.path.join(HERE, "src", "c", "empty.c")
 
 
 cmdclass = {}
@@ -37,84 +23,67 @@ else:
     cmdclass['bdist_wheel'] = UniversalBdistWheel
 
 
-class BuildShlib(Command):
+class SharedLibrary(Extension):
 
-    def initialize_options(self):
-        self.build_lib = None
+    if sys.platform == "darwin":
+        suffix = ".dylib"
+    elif sys.platform == "win32":
+        suffix = ".dll"
+    else:
+        suffix = ".so"
 
-    def finalize_options(self):
-        self.set_undefined_options('build',
-                                   ('build_lib', 'build_lib'))
+    def __init__(self, name, cmd, cwd=".", output_dir=".", env=None):
+        Extension.__init__(self, name, sources=[])
+        self.cmd = cmd
+        self.cwd = os.path.normpath(cwd)
+        self.output_dir = os.path.normpath(output_dir)
+        self.env = env or dict(os.environ)
 
-    def run(self):
-        log.info("running 'make'")
+
+class SharedLibBuildExt(build_ext):
+
+    def get_ext_filename(self, ext_name):
+        for ext in self.extensions:
+            if isinstance(ext, SharedLibrary):
+                return os.path.join(*ext_name.split('.')) + ext.suffix
+        return build_ext.get_ext_filename(self, ext_name)
+
+    def build_extension(self, ext):
+        if not isinstance(ext, SharedLibrary):
+            build_ext.build_extension(self, ext)
+            return
+
+        log.info("running '%s'" % " ".join(ext.cmd))
         if not self.dry_run:
-            rv = subprocess.Popen(["make"], env=dict(os.environ)).wait()
+            rv = subprocess.Popen(ext.cmd, cwd=ext.cwd, env=ext.env).wait()
             if rv != 0:
                 sys.exit(rv)
 
-        for filename in os.listdir(LIB_DIR):
-            if filename == LIB_FILENAME:
-                shlib = os.path.join(LIB_DIR, filename)
-                break
-        else:
-            raise LookupError('%r not found' % LIB_FILENAME)
+        lib_name = ext.name.split(".")[-1] + ext.suffix
+        lib_fullpath = os.path.join(ext.output_dir, lib_name)
 
-        dest_dir = os.path.join(self.build_lib, NAME)
-        mkpath(dest_dir, verbose=self.verbose, dry_run=self.dry_run)
+        dest_path = self.get_ext_fullpath(ext.name)
+        mkpath(os.path.dirname(dest_path),
+               verbose=self.verbose, dry_run=self.dry_run)
 
-        dest_path = os.path.join(dest_dir, LIB_FILENAME)
-        copy_file(shlib, dest_path, preserve_times=False,
+        copy_file(lib_fullpath, dest_path,
                   verbose=self.verbose, dry_run=self.dry_run)
 
 
-class DummyBuildExt(build_ext):
+cmdclass['build_ext'] = SharedLibBuildExt
 
-    def finalize_options(self):
-        build_ext.finalize_options(self)
-        self.force = False
-
-    def get_ext_fullpath(self, ext_name):
-        lib_filename = self._get_lib_filename(ext_name)
-        if lib_filename is None:
-            return build_ext.get_ext_fullpath(self, ext_name)
-
-        if not self.inplace:
-            return os.path.join(self.build_lib, NAME, lib_filename)
-
-        build_py = self.get_finalized_command('build_py')
-        package_dir = os.path.abspath(build_py.get_package_dir(NAME))
-        return os.path.join(package_dir, lib_filename)
-
-    def get_ext_filename(self, ext_name):
-        lib_filename = self._get_lib_filename(ext_name)
-        if lib_filename is None:
-            return build_ext.get_ext_filename(self, ext_name)
-        return os.path.join(NAME, lib_filename)
-
-    def _get_lib_filename(self, ext_name):
-        for ext in self.distribution.ext_modules:
-            if ext.name == ext_name:
-                return getattr(ext, '_lib_filename', None)
-
-    def run(self):
-        self.run_command("build_shlib")
-        build_ext.run(self)
-
-
-cmdclass['build_shlib'] = BuildShlib
-cmdclass['build_ext'] = DummyBuildExt
-
-dummy_ext = Extension("%s.%s" % (NAME, LIB_NAME), sources=[EMPTY_C])
-dummy_ext._lib_filename = LIB_FILENAME
+libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
+                               cmd=["make"],
+                               cwd="src/c",
+                               output_dir="build/local/lib")
 
 
 setup(
-    name=NAME,
+    name="ttfautohint-python",
     version='0.1.0.dev0',
     package_dir={'': 'src/python'},
     packages=find_packages('src/python'),
-    ext_modules=[dummy_ext],
+    ext_modules=[libttfautohint],
     zip_safe=False,
     cmdclass=cmdclass,
 )
