@@ -1,7 +1,7 @@
 # Define custom utilities
 # Test for OSX with [ -n "$IS_OSX" ]
 
-if [ -n "$IS_OSX"]; then
+if [ -n "$IS_OSX" ]; then
     PATH="/usr/local/opt/libtool/bin:$PATH"
     PATH="/usr/local/opt/ragel/bin:$PATH"
     PATH="/usr/local/opt/bison/bin:$PATH"
