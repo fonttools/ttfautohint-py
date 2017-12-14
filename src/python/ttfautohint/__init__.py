@@ -2,9 +2,10 @@ from __future__ import print_function, division, absolute_import
 
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
-    byref)
+    c_int, byref)
 
 from io import BytesIO, open
+from collections import namedtuple
 import sys
 import os
 
@@ -41,9 +42,33 @@ else:
     else:
         libttfautohint_name = "libttfautohint.so"
 
+
+# load the embedded libttfautohint shared library
+# TODO: also allow to load from system search paths?
 libttfautohint_path = os.path.join(os.path.dirname(__file__),
                                    libttfautohint_name)
 libttfautohint = cdll.LoadLibrary(libttfautohint_path)
+
+
+libttfautohint.TTF_autohint_version.argtypes = [POINTER(c_int)] * 3
+libttfautohint.TTF_autohint_version.restype = None
+
+_major, _minor, _revision = c_int(), c_int(), c_int()
+libttfautohint.TTF_autohint_version(_major, _minor, _revision)
+
+libttfautohint.TTF_autohint_version_string.restype = c_char_p
+
+
+class Version(namedtuple("Version", ["major", "minor", "revision"])):
+
+    def __str__(self):
+        return libttfautohint.TTF_autohint_version_string()
+
+
+# the libttfautohint version triplet can be accessed as a namedtuple,
+# and its full string is also available if print() or converted to str()
+__version__ = Version(_major.value, _minor.value, _revision.value)
+
 
 libc.free.argtypes = [c_void_p]
 libc.free.restype = None
