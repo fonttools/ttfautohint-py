@@ -3,12 +3,14 @@ from __future__ import print_function, division, absolute_import
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
     c_int, byref)
+from ctypes.util import find_library
 
 from io import BytesIO, open
-from collections import namedtuple
 import sys
 import os
 
+
+__version__ = "0.1.0.dev0"
 
 __all__ = ["ttfautohint", "TAError"]
 
@@ -29,49 +31,97 @@ def tobytes(s, encoding="ascii", errors="strict"):
 
 
 if sys.platform == "win32":
-    libttfautohint_name = "libttfautohint.dll"
     libc = cdll.msvcrt
 else:
-    from ctypes.util import find_library
     libc_path = find_library("c")
     if libc_path is None:
         raise OSError("Could not find the libc shared library")
     libc = cdll.LoadLibrary(libc_path)
-    if sys.platform == "darwin":
-        libttfautohint_name = "libttfautohint.dylib"
-    else:
-        libttfautohint_name = "libttfautohint.so"
 
-
-# load the embedded libttfautohint shared library
-# TODO: also allow to load from system search paths?
-libttfautohint_path = os.path.join(os.path.dirname(__file__),
-                                   libttfautohint_name)
-libttfautohint = cdll.LoadLibrary(libttfautohint_path)
-
-
-libttfautohint.TTF_autohint_version.argtypes = [POINTER(c_int)] * 3
-libttfautohint.TTF_autohint_version.restype = None
-
-_major, _minor, _revision = c_int(), c_int(), c_int()
-libttfautohint.TTF_autohint_version(_major, _minor, _revision)
-
-libttfautohint.TTF_autohint_version_string.restype = c_char_p
-
-
-class Version(namedtuple("Version", ["major", "minor", "revision"])):
-
-    def __str__(self):
-        return libttfautohint.TTF_autohint_version_string()
-
-
-# the libttfautohint version triplet can be accessed as a namedtuple,
-# and its full string is also available if print() or converted to str()
-__version__ = Version(_major.value, _minor.value, _revision.value)
-
+libc.malloc.argtypes = [c_size_t]
+libc.malloc.restype = c_void_p
 
 libc.free.argtypes = [c_void_p]
 libc.free.restype = None
+
+
+class TALibrary(object):
+
+    def __init__(self, path=None, **kwargs):
+        """ Initialize a new handle to the libttfautohint shared library.
+        If no path is provided, by default the embedded shared library that
+        comes with the binary wheel is loaded first. If this is not found,
+        then `ctypes.util.find_library` function is used to search in the
+        system's default search paths.
+        """
+        if path is None:
+            if sys.platform == "win32":
+                name = "libttfautohint.dll"
+            elif sys.platform == "darwin":
+                name = "libttfautohint.dylib"
+            else:
+                name = "libttfautohint.so"
+            path = os.path.join(os.path.dirname(__file__), name)
+            if not os.path.isfile(path):
+                path = find_library("ttfautohint")
+                if not path:
+                    raise OSError("cannot find '%s'" % name)
+        self.lib = lib = cdll.LoadLibrary(path, **kwargs)
+        self.path = path
+
+        lib.TTF_autohint_version.argtypes = [POINTER(c_int)] * 3
+        lib.TTF_autohint_version.restype = None
+        _major, _minor, _revision = c_int(), c_int(), c_int()
+        lib.TTF_autohint_version(_major, _minor, _revision)
+        self.major = _major.value
+        self.minor = _minor.value
+        self.revision = _revision.value
+
+        lib.TTF_autohint_version_string.restype = c_char_p
+        self.version_string = lib.TTF_autohint_version_string()
+
+    def ttfautohint(self, **kwargs):
+        options = _validate_options(kwargs)
+
+        # pop 'out_file' from options dict since we use 'out_buffer'
+        out_file = options.pop('out_file')
+
+        out_buffer_p = POINTER(c_char)()
+        out_buffer_len = c_size_t(0)
+        error_string = c_char_p()
+
+        option_keys, option_values = _format_varargs(
+            out_buffer=byref(out_buffer_p),
+            out_buffer_len=byref(out_buffer_len),
+            error_string=byref(error_string),
+            **options
+        )
+
+        rv = self.lib.TTF_autohint(option_keys, *option_values)
+        if rv:
+            raise TAError(rv, error_string)
+
+        assert out_buffer_len.value
+
+        data = out_buffer_p[:out_buffer_len.value]
+        assert len(data) == out_buffer_len.value
+
+        if out_buffer_p:
+            libc.free(out_buffer_p)
+            out_buffer_p = None
+
+        if out_file is not None:
+            try:
+                return out_file.write(data)
+            except AttributeError:
+                with open(out_file, 'wb') as f:
+                    return f.write(data)
+        else:
+            return data
+
+
+libttfautohint = TALibrary()
+
 
 OPTIONS = dict(
     in_file=None,
@@ -197,41 +247,4 @@ def _format_varargs(**kwargs):
     return format_string, values
 
 
-def ttfautohint(**kwargs):
-    options = _validate_options(kwargs)
-
-    # pop 'out_file' from options dict since we use 'out_buffer'
-    out_file = options.pop('out_file')
-
-    out_buffer_p = POINTER(c_char)()
-    out_buffer_len = c_size_t(0)
-    error_string = c_char_p()
-
-    option_keys, option_values = _format_varargs(
-        out_buffer=byref(out_buffer_p),
-        out_buffer_len=byref(out_buffer_len),
-        error_string=byref(error_string),
-        **options
-    )
-
-    rv = libttfautohint.TTF_autohint(option_keys, *option_values)
-    if rv:
-        raise TAError(rv, error_string)
-
-    assert out_buffer_len.value
-
-    data = out_buffer_p[:out_buffer_len.value]
-    assert len(data) == out_buffer_len.value
-
-    if out_buffer_p:
-        libc.free(out_buffer_p)
-        out_buffer_p = None
-
-    if out_file is not None:
-        try:
-            return out_file.write(data)
-        except AttributeError:
-            with open(out_file, 'wb') as f:
-                return f.write(data)
-    else:
-        return data
+ttfautohint = libttfautohint.ttfautohint
