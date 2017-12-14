@@ -15,20 +15,28 @@ function pre_build {
     if [ -n "$IS_OSX" ]; then
         echo $PATH
         brew install libtool ragel flex bison
+        # the GNU libtool/libtoolize are prefixed with "g" to avoid clash
+        # with /usr/bin/libtool
         which glibtool
         glibtool --version
-        which ragel
-        ragel --version
-        which flex
-        flex --version
-        which bison
-        bison --version
     else
-        build_simple libtool 2.4.6 https://ftp.gnu.org/gnu/libtool/
-        build_simple ragel 6.10 http://www.colm.net/files/ragel
-        build_simple bison 3.0.4 https://ftp.gnu.org/gnu/bison/
-        build_github westes/flex "v2.6.4"
+        build_libtool
+        build_ragel
+        build_flex
+        build_bison
+
+        which libtool
+        libtool --version
     fi
+
+    which ragel
+    ragel --version
+
+    which flex
+    flex --version
+
+    which bison
+    bison --version
 }
 
 function run_tests {
