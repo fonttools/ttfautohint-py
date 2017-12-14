@@ -98,8 +98,8 @@ $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
         --prefix="$(PREFIX)" \
         $(LIBTTFAUTOHINT_OPTIONS) \
         --with-freetype-config="$(PREFIX)/bin/freetype-config" \
-        CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
-        CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
+        CFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CFLAGS)" \
+        CXXFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CXXFLAGS)" \
         LDFLAGS="$(LDFLAGS)" \
         PKG_CONFIG=true \
         HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
