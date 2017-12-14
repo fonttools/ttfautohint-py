@@ -8,6 +8,7 @@ env:
         # a separate install.
         # - TEST_DEPENDS=""
         - PLAT=x86_64
+        - CONFIG_PATH="ci/multibuild_config.sh"
 
 language: python
 # The travis Python version is unrelated to the version we build and test
