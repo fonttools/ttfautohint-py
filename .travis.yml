@@ -8,7 +8,6 @@ env:
         # a separate install.
         # - TEST_DEPENDS=""
         - PLAT=x86_64
-        - UNICODE_WIDTH=32
 
 language: python
 # The travis Python version is unrelated to the version we build and test
@@ -24,38 +23,12 @@ matrix:
     - python: 3.5
   include:
     - os: linux
-      env: MB_PYTHON_VERSION=2.7
-    # - os: linux
-    #   env:
-    #     - MB_PYTHON_VERSION=2.7
-    #     - UNICODE_WIDTH=16
-    - os: linux
       env:
         - MB_PYTHON_VERSION=2.7
         - PLAT=i686
-    # - os: linux
-    #   env:
-    #     - MB_PYTHON_VERSION=2.7
-    #     - PLAT=i686
-    #     - UNICODE_WIDTH=16
-    # - os: linux
-    #   env:
-    #     - MB_PYTHON_VERSION=3.5
-    # - os: linux
-    #   env:
-    #     - MB_PYTHON_VERSION=3.5
-    #     - PLAT=i686
     - os: linux
       env:
         - MB_PYTHON_VERSION=3.6
-    - os: linux
-      env:
-        - MB_PYTHON_VERSION=3.6
-        - PLAT=i686
-    - os: osx
-      language: generic
-      env:
-        - MB_PYTHON_VERSION=2.7
     - os: osx
       language: generic
       env:
