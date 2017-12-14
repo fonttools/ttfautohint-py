@@ -27,7 +27,7 @@ function pre_build {
         build_simple libtool 2.4.6 https://ftp.gnu.org/gnu/libtool/
         build_simple ragel 6.10 http://www.colm.net/files/ragel
         build_simple bison 3.0.4 https://ftp.gnu.org/gnu/bison/
-        build_simple flex 2.6.4 https://github.com/westes/flex/releases/download/v2.6.4
+        build_github westes/flex "v2.6.4"
     fi
 }
 
