@@ -2,7 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
-    c_int, byref)
+    c_int, byref, CFUNCTYPE)
 from ctypes.util import find_library
 
 from io import BytesIO, open
@@ -30,6 +30,13 @@ def tobytes(s, encoding="ascii", errors="strict"):
         raise TypeError("not expecting type '%s'" % type(s))
 
 
+# we load the libc to get the standard malloc and free functions.
+# They will be used anyway by libttfautohint if we didn't provide the
+# 'alloc-func' and 'free-func' callbacks. However, by explicitly passing
+# them, we ensure that both libttfautohint and cytpes will use the same
+# memory allocation functions. E.g. on Windows, a DLL may be linked
+# with a different version of the C runtime library than the application
+# which loads the DLL.
 if sys.platform == "win32":
     libc = cdll.msvcrt
 else:
@@ -40,9 +47,13 @@ else:
 
 libc.malloc.argtypes = [c_size_t]
 libc.malloc.restype = c_void_p
+TA_Alloc_Func_Proto = CFUNCTYPE(c_void_p, c_size_t)
+alloc_func = TA_Alloc_Func_Proto(lambda size: libc.malloc(size))
 
 libc.free.argtypes = [c_void_p]
 libc.free.restype = None
+TA_Free_Func_Proto = CFUNCTYPE(None, c_void_p)
+free_func = TA_Free_Func_Proto(lambda p: libc.free(p))
 
 
 class TALibrary(object):
@@ -94,6 +105,8 @@ class TALibrary(object):
             out_buffer=byref(out_buffer_p),
             out_buffer_len=byref(out_buffer_len),
             error_string=byref(error_string),
+            alloc_func=alloc_func,
+            free_func=free_func,
             **options
         )
 
@@ -107,7 +120,7 @@ class TALibrary(object):
         assert len(data) == out_buffer_len.value
 
         if out_buffer_p:
-            libc.free(out_buffer_p)
+            free_func(out_buffer_p)
             out_buffer_p = None
 
         if out_file is not None:
