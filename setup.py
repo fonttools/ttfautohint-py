@@ -55,7 +55,10 @@ class SharedLibBuildExt(build_ext):
 
         log.info("running '%s'" % " ".join(ext.cmd))
         if not self.dry_run:
-            rv = subprocess.Popen(ext.cmd, cwd=ext.cwd, env=ext.env).wait()
+            rv = subprocess.Popen(ext.cmd,
+                                  cwd=ext.cwd,
+                                  env=ext.env,
+                                  shell=True).wait()
             if rv != 0:
                 sys.exit(rv)
 
@@ -72,9 +75,32 @@ class SharedLibBuildExt(build_ext):
 
 cmdclass['build_ext'] = SharedLibBuildExt
 
+env = dict(os.environ)
+if sys.platform == "win32":
+    import struct
+    # select mingw32 or mingw64 toolchain depending on python architecture
+    bits = struct.calcsize("P") * 8
+    toolchain = "mingw%d" % bits
+    PATH = ";".join([
+        "C:\\msys64\\%s\\bin" % toolchain,
+        "C:\\msys64\\usr\\bin",
+        env["PATH"]
+    ])
+    env.update(
+        PATH=PATH,
+        MSYSTEM=toolchain.upper(),
+        # this tells bash to keep the current working directory
+        CHERE_INVOKING="1",
+    )
+    # we need to run make from an msys2 shell
+    cmd = ["bash", "-lc", "make"]
+else:
+    cmd = ["make"]
+
 libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
-                               cmd=["make"],
+                               cmd=cmd,
                                cwd="src/c",
+                               env=env,
                                output_dir="build/local/lib")
 
 
