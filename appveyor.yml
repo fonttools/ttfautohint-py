@@ -1,29 +1,19 @@
 environment:
   global:
-    PACKAGE_NAME: "ttfautohint-py"
+    PACKAGE_NAME: ttfautohint-py
   matrix:
-    - PYTHON: "C:\\Python27"
-      PYTHON_VERSION: "2.7"
-      PYTHON_ARCH: "32"
-      MSYS_ARCH: "i686"
+    - PYTHON: C:\Python27
+      PYTHON_VERSION: 2.7
+      PYTHON_ARCH: '32'
+      MSYS_ARCH: i686
 
-    # - PYTHON: "C:\\Python36"
-    #   PYTHON_VERSION: "3.6"
-    #   PYTHON_ARCH: "32"
-    #   MSYS_ARCH: "i686"
-
-    # - PYTHON: "C:\\Python27-x64"
-    #   PYTHON_VERSION: "2.7"
-    #   PYTHON_ARCH: "64"
-    #   MSYS_ARCH: "x64_64"
-
-    - PYTHON: "C:\\Python36-x64"
-      PYTHON_VERSION: "3.6"
-      PYTHON_ARCH: "64"
-      MSYS_ARCH: "x64_64"
+    - PYTHON: C:\Python36-x64
+      PYTHON_VERSION: 3.6
+      PYTHON_ARCH: '64'
+      MSYS_ARCH: x64_64
 
 init:
-  - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH% %MSYS_ARCH%"
+  - ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH% %MSYS_ARCH%
 
 install:
   # If there is a newer build queued for the same PR, cancel this one.
@@ -40,35 +30,35 @@ install:
   - git submodule update --init --recursive
 
   # prepend Python to the PATH
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+  - SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
 
   # check that we have the expected version and architecture for Python
-  - "python --version"
-  - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
+  - python --version
+  - python -c "import struct; print(struct.calcsize('P') * 8)"
 
   # install/upgrade python setup requirements
-  - "python -m pip install --disable-pip-version-check --upgrade pip"
-  - "pip --version"
-  - "pip install --upgrade setuptools wheel virtualenv"
+  - python -m pip install --disable-pip-version-check --upgrade pip
+  - pip --version
+  - pip install --upgrade setuptools wheel virtualenv
 
   # install required msys2 packages
-  - 'C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-$MSYS_ARCH-ragel"'
+  - C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-$MSYS_ARCH-ragel"
 
 build_script:
   # build the wheel in the default 'dist/' folder
-  - "python setup.py bdist_wheel"
+  - python setup.py bdist_wheel
 
 test_script:
   # create test env
-  - "python -m virtualenv test_env"
-  - "test_venv/Scripts/activate"
-  - "where python"
+  - python -m virtualenv test_env
+  - test_env\Scripts\activate
+  - where python
 
   # install from wheel
-  - "pip install --no-index --find-links dist/ %PACKAGE_NAME%"
+  - pip install --no-index --find-links dist %PACKAGE_NAME%
 
   # run tests from installed wheel
-  - 'python -c "import ttfautohint"'
+  - python -c "import ttfautohint"
 
 artifacts:
   # archive the generated packages in the ci.appveyor.com build report
