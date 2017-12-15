@@ -14,6 +14,7 @@ function pre_build {
     # Runs in the root directory of this repository.
     if [ -n "$IS_OSX" ]; then
         echo $PATH
+        brew install ragel
         # the GNU libtool/libtoolize are prefixed with "g" to avoid clash
         # with /usr/bin/libtool
         which glibtool
