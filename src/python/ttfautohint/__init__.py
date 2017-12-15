@@ -149,9 +149,7 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
     string_p[0] = cast(new_string_p, POINTER(c_ubyte))
 
     memmove(string_p[0], new_string_array, len_new)
-
-    print(string.decode(info_encoding))
-    print(new_string.decode(info_encoding))
+    str_len_p[0] = len_new
 
     return 0
 
