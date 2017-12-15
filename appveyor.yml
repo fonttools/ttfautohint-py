@@ -5,21 +5,25 @@ environment:
     - PYTHON: "C:\\Python27"
       PYTHON_VERSION: "2.7"
       PYTHON_ARCH: "32"
+      MSYS_ARCH: "i686"
 
     # - PYTHON: "C:\\Python36"
     #   PYTHON_VERSION: "3.6"
     #   PYTHON_ARCH: "32"
+    #   MSYS_ARCH: "i686"
 
     # - PYTHON: "C:\\Python27-x64"
     #   PYTHON_VERSION: "2.7"
     #   PYTHON_ARCH: "64"
+    #   MSYS_ARCH: "x64_64"
 
     - PYTHON: "C:\\Python36-x64"
       PYTHON_VERSION: "3.6"
       PYTHON_ARCH: "64"
+      MSYS_ARCH: "x64_64"
 
 init:
-  - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
+  - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%" "%MSYS_ARCH"
 
 install:
   # If there is a newer build queued for the same PR, cancel this one.
@@ -48,7 +52,7 @@ install:
   - "pip install --upgrade setuptools wheel virtualenv"
 
   # install required msys2 packages
-  - 'C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-$PYTHON_ARCH-ragel"'
+  - 'C:\msys64\usr\bin\bash -lc "pacman -S --noconfirm mingw-w64-$MSYS_ARCH-ragel"'
 
 build_script:
   # build the wheel in the default 'dist/' folder
