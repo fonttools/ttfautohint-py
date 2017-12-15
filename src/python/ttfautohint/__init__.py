@@ -2,7 +2,8 @@ from __future__ import print_function, division, absolute_import
 
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
-    c_int, byref, CFUNCTYPE)
+    c_int, c_ushort, c_ubyte, byref, CFUNCTYPE, Structure, cast, pointer,
+    memmove)
 from ctypes.util import find_library
 
 from io import BytesIO, open
@@ -15,10 +16,15 @@ __version__ = "0.1.0.dev0"
 __all__ = ["ttfautohint", "TAError"]
 
 
-try:  # PY2
-    text_type = unicode
-except NameError:  # PY3
+PY3 = sys.version_info[0] >= 3
+if PY3:
     text_type = str
+    iterbytes = iter
+else: # PY2
+    text_type = unicode
+    import itertools
+    import functools
+    iterbytes = functools.partial(itertools.imap, ord)
 
 
 def tobytes(s, encoding="ascii", errors="strict"):
@@ -47,13 +53,110 @@ else:
 
 libc.malloc.argtypes = [c_size_t]
 libc.malloc.restype = c_void_p
-TA_Alloc_Func_Proto = CFUNCTYPE(c_void_p, c_size_t)
-alloc_func = TA_Alloc_Func_Proto(lambda size: libc.malloc(size))
 
 libc.free.argtypes = [c_void_p]
 libc.free.restype = None
+
+libc.realloc.argtypes = [c_void_p, c_size_t]
+libc.realloc.restype = c_void_p
+
+TA_Alloc_Func_Proto = CFUNCTYPE(c_void_p, c_size_t)
+alloc_func = TA_Alloc_Func_Proto(lambda size: libc.malloc(size))
+
 TA_Free_Func_Proto = CFUNCTYPE(None, c_void_p)
 free_func = TA_Free_Func_Proto(lambda p: libc.free(p))
+
+
+TA_Info_Func_Proto = CFUNCTYPE(
+    c_int,                      # (return value)
+    c_ushort,                   # platform_id
+    c_ushort,                   # encoding_id
+    c_ushort,                   # language_id
+    c_ushort,                   # name_id
+    POINTER(c_ushort),          # str_len
+    POINTER(POINTER(c_ubyte)),  # str
+    c_void_p                    # info_data
+)
+
+
+class InfoData(Structure):
+
+    _fields_ = [
+        ("info_string", POINTER(c_ubyte)),
+        ("info_string_wide", POINTER(c_ubyte)),
+        ("info_string_len", c_ushort),
+        ("info_string_wide_len", c_ushort),
+    ]
+
+
+INFO_STRING = u"; ttfautohint"
+
+
+def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
+                   string_p, info_data_p):
+    # for now we only modify the version string
+    if name_id != 5:
+        return 0
+
+    # cast void pointer to a pointer to InfoData struct
+    info_data_p = cast(info_data_p, POINTER(InfoData))
+    d = info_data_p[0]
+
+    str_len = str_len_p[0]
+    string = bytes(bytearray(string_p[0][:str_len]))
+
+    if (platform_id == 1 or
+            (platform_id == 3 and not (
+                encoding_id == 1 or encoding_id == 10))):
+        # one-byte or multi-byte encodings
+        v_len = d.info_string_len
+        v = bytes(bytearray(d.info_string[:v_len]))
+        info_encoding = "ascii"
+        offset = 1
+    else:
+        # (two-byte) UTF-16BE for everything else
+        v_len = d.info_string_wide_len
+        v = bytes(bytearray(d.info_string_wide[:v_len]))
+        info_encoding = "utf-16be"
+        offset = 2
+
+    info_bytes = INFO_STRING.encode(info_encoding)
+    semicolon = u";".encode(info_encoding)
+    # if we already have an ttfautohint info string, remove it up to a
+    # following `;' character (or end of string)
+    start = string.find(info_bytes)
+    if start != -1:
+        new_string = string[:start] + v
+        string_end = string[start+offset:]
+        last_semicolon_index = string_end.rfind(semicolon)
+        if last_semicolon_index != -1:
+            new_string += string_end[last_semicolon_index:]
+    else:
+        new_string = string + v
+
+    # do nothing if the string would become too long
+    len_new = len(new_string)
+    if len_new > 0xFFFF:
+        return 0
+
+    new_string_array = (c_ubyte * len_new)(*iterbytes(new_string))
+
+    new_string_p = libc.realloc(string_p[0], len_new)
+    if not new_string_p:
+        # hm, realloc failed... nevermind
+        return 1
+
+    string_p[0] = cast(new_string_p, POINTER(c_ubyte))
+
+    memmove(string_p[0], new_string_array, len_new)
+
+    print(string.decode(info_encoding))
+    print(new_string.decode(info_encoding))
+
+    return 0
+
+
+info_callback = TA_Info_Func_Proto(_info_callback)
 
 
 class TALibrary(object):
@@ -89,7 +192,17 @@ class TALibrary(object):
         self.revision = _revision.value
 
         lib.TTF_autohint_version_string.restype = c_char_p
-        self.version_string = lib.TTF_autohint_version_string()
+        version_string = lib.TTF_autohint_version_string().decode('ascii')
+        self.version_string = version_string
+
+        info_string = INFO_STRING + u" (v%s)" % version_string
+        s = info_string.encode('ascii')
+        s_len = len(s)
+        ws = info_string.encode('utf-16be')
+        ws_len = len(ws)
+        s_array = (c_ubyte * s_len)(*(iterbytes(s)))
+        ws_array = (c_ubyte * ws_len)(*(iterbytes(ws)))
+        self.info_data = InfoData(s_array, ws_array, s_len, ws_len)
 
     def ttfautohint(self, **kwargs):
         options = _validate_options(kwargs)
@@ -107,6 +220,8 @@ class TALibrary(object):
             error_string=byref(error_string),
             alloc_func=alloc_func,
             free_func=free_func,
+            info_callback=info_callback,
+            info_callback_data=pointer(self.info_data),
             **options
         )
 
