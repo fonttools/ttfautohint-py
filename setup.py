@@ -92,7 +92,7 @@ if sys.platform == "win32":
         # this tells bash to keep the current working directory
         CHERE_INVOKING="1",
     )
-    # we need to run make from an msys2 shell
+    # we need to run make from an msys2 login shell
     cmd = ["bash", "-lc", "make"]
 else:
     cmd = ["make"]
