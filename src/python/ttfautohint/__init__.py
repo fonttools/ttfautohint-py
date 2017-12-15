@@ -2,8 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
-    c_int, c_ushort, c_ubyte, byref, CFUNCTYPE, Structure, cast, pointer,
-    memmove)
+    c_int, c_ushort, c_ubyte, byref, CFUNCTYPE, Structure, cast, memmove)
 from ctypes.util import find_library
 
 from io import BytesIO, open
@@ -219,7 +218,7 @@ class TALibrary(object):
             alloc_func=alloc_func,
             free_func=free_func,
             info_callback=info_callback,
-            info_callback_data=pointer(self.info_data),
+            info_callback_data=byref(self.info_data),
             **options
         )
 
