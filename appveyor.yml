@@ -23,7 +23,7 @@ environment:
       MSYS_ARCH: "x64_64"
 
 init:
-  - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%" "%MSYS_ARCH"
+  - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH% %MSYS_ARCH%"
 
 install:
   # If there is a newer build queued for the same PR, cancel this one.
