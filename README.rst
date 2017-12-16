@@ -1,3 +1,5 @@
+|Travis CI Status| |Appveyor CI Status|
+
 ttfautohint-py
 ~~~~~~~~~~~~~~
 
@@ -29,3 +31,8 @@ source (checked in as git submodules), some relatively recent versions of the
 following development tools are also required: ``autoconf``, ``automake``,
 ``libtool``, ``flex``, ``bison`` and ``ragel``. Please check the respective
 documentation of these libraries for more information.
+
+.. |Travis CI Status| image:: https://travis-ci.org/fonttools/ttfautohint-py.svg
+   :target: https://travis-ci.org/fonttools/ttfautohint-py
+.. |Appveyor CI Status| image:: https://ci.appveyor.com/api/projects/status/v3aoglkmbhtgsfao/branch/master?svg=true
+   :target: https://ci.appveyor.com/project/fonttools/ttfautohint-py/
