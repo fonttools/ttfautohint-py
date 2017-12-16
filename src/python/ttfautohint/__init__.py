@@ -2,7 +2,8 @@ from __future__ import print_function, division, absolute_import
 
 from ctypes import (
     cdll, POINTER, c_void_p, c_char, c_char_p, c_size_t, c_ulonglong,
-    c_int, c_ushort, c_ubyte, byref, CFUNCTYPE, Structure, cast, memmove)
+    c_int, c_ushort, c_ubyte, byref, CFUNCTYPE, Structure, cast, memmove,
+    c_wchar_p)
 from ctypes.util import find_library
 
 from io import BytesIO, open
@@ -80,15 +81,10 @@ TA_Info_Func_Proto = CFUNCTYPE(
 
 class InfoData(Structure):
 
-    _fields_ = [
-        ("info_string", POINTER(c_ubyte)),
-        ("info_string_wide", POINTER(c_ubyte)),
-        ("info_string_len", c_ushort),
-        ("info_string_wide_len", c_ushort),
-    ]
+    _fields_ = [("info_string", c_wchar_p)]
 
 
-INFO_STRING = u"; ttfautohint"
+INFO_PREFIX = u"; ttfautohint"
 
 
 def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
@@ -99,7 +95,7 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
 
     # cast void pointer to a pointer to InfoData struct
     info_data_p = cast(info_data_p, POINTER(InfoData))
-    d = info_data_p[0]
+    data = info_data_p[0]
 
     str_len = str_len_p[0]
     string = bytes(bytearray(string_p[0][:str_len]))
@@ -108,30 +104,27 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
             (platform_id == 3 and not (
                 encoding_id == 1 or encoding_id == 10))):
         # one-byte or multi-byte encodings
-        v_len = d.info_string_len
-        v = bytes(bytearray(d.info_string[:v_len]))
-        info_encoding = "ascii"
+        encoding = "ascii"
         offset = 1
     else:
         # (two-byte) UTF-16BE for everything else
-        v_len = d.info_string_wide_len
-        v = bytes(bytearray(d.info_string_wide[:v_len]))
-        info_encoding = "utf-16be"
+        encoding = "utf-16be"
         offset = 2
 
-    info_bytes = INFO_STRING.encode(info_encoding)
-    semicolon = u";".encode(info_encoding)
+    info_string = data.info_string.encode(encoding)
+    info_prefix = INFO_PREFIX.encode(encoding)
+    semicolon = u";".encode(encoding)
     # if we already have an ttfautohint info string, remove it up to a
     # following `;' character (or end of string)
-    start = string.find(info_bytes)
+    start = string.find(info_prefix)
     if start != -1:
-        new_string = string[:start] + v
+        new_string = string[:start] + info_string
         string_end = string[start+offset:]
         last_semicolon_index = string_end.rfind(semicolon)
         if last_semicolon_index != -1:
             new_string += string_end[last_semicolon_index:]
     else:
-        new_string = string + v
+        new_string = string + info_string
 
     # do nothing if the string would become too long
     len_new = len(new_string)
@@ -192,14 +185,8 @@ class TALibrary(object):
         version_string = lib.TTF_autohint_version_string().decode('ascii')
         self.version_string = version_string
 
-        info_string = INFO_STRING + u" (v%s)" % version_string
-        s = info_string.encode('ascii')
-        s_len = len(s)
-        ws = info_string.encode('utf-16be')
-        ws_len = len(ws)
-        s_array = (c_ubyte * s_len)(*(iterbytes(s)))
-        ws_array = (c_ubyte * ws_len)(*(iterbytes(ws)))
-        self.info_data = InfoData(s_array, ws_array, s_len, ws_len)
+        info_string = INFO_PREFIX + u" (v%s)" % version_string
+        self.info_data = InfoData(info_string)
 
     def ttfautohint(self, **kwargs):
         options = _validate_options(kwargs)
