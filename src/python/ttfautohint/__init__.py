@@ -89,13 +89,13 @@ INFO_PREFIX = u"; ttfautohint"
 
 def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
                    string_p, info_data_p):
-    # for now we only modify the version string
-    if name_id != 5:
-        return 0
-
     # cast void pointer to a pointer to InfoData struct
     info_data_p = cast(info_data_p, POINTER(InfoData))
     data = info_data_p[0]
+
+    # for now we only modify the version string
+    if not data.info_string or name_id != 5:
+        return 0
 
     str_len = str_len_p[0]
     string = bytes(bytearray(string_p[0][:str_len]))
@@ -188,8 +188,71 @@ class TALibrary(object):
         info_string = INFO_PREFIX + u" (v%s)" % version_string
         self.info_data = InfoData(info_string)
 
+    def _build_info_string(self, options):
+        no_info = options.pop("no_info")
+        detailed_info = options.pop("detailed_info")
+
+        if no_info:
+            return None
+
+        s = INFO_PREFIX + " (v%s)" % self.version_string
+
+        if not detailed_info:
+            return s
+
+        if options["dehint"]:
+            s += " -d"
+            return s
+
+        s += " -l %d" % options["hinting_range_min"]
+        s += " -r %d" % options["hinting_range_max"]
+        s += " -G %d" % options["hinting_limit"]
+        s += " -x %d" % options["increase_x_height"]
+        if options["fallback_stem_width"]:
+            s += " -H %d" % options["fallback_stem_width"]
+        s += " -D %s" % options["default_script"]
+        s += " -f %s" % options["fallback_script"]
+
+        control_name = options.pop("control_name", None)
+        if control_name:
+            s += ' -m "%s"' % os.path.basename(control_name)
+
+        reference_name = options.get("reference_name")
+        if reference_name:
+            s += ' -R "%s"' % os.path.basename(reference_name)
+
+        if options["reference_index"]:
+            s += " -Z %d" % options["reference_index"]
+
+        strong_stem_width = ""
+        if options["gray_strong_stem_width"]:
+            strong_stem_width += "g"
+        if options["gdi_cleartype_strong_stem_width"]:
+            strong_stem_width += "G"
+        if options["dw_cleartype_strong_stem_width"]:
+            strong_stem_width += "D"
+        s += " -w %s" % strong_stem_width or '""'
+
+        if options["windows_compatibility"]:
+            s += " -W"
+        if options["adjust_subglyphs"]:
+            s += " -p"
+        if options["hint_composites"]:
+            s += " -c"
+        if options["symbol"]:
+            s += " -s"
+        if options["fallback_scaling"]:
+            s += " -S"
+        if options["TTFA_info"]:
+            s += " -t"
+        s += ' -X "%s"' % options["x_height_snapping_exceptions"]
+        return s
+
     def ttfautohint(self, **kwargs):
         options = _validate_options(kwargs)
+
+        info_string = self._build_info_string(options)
+        info_data = InfoData(info_string)
 
         # pop 'out_file' from options dict since we use 'out_buffer'
         out_file = options.pop('out_file')
@@ -205,7 +268,7 @@ class TALibrary(object):
             alloc_func=alloc_func,
             free_func=free_func,
             info_callback=info_callback,
-            info_callback_data=byref(self.info_data),
+            info_callback_data=byref(info_data),
             **options
         )
 
@@ -262,6 +325,8 @@ OPTIONS = dict(
     symbol=False,
     fallback_stem_width=0,
     ignore_restrictions=False,
+    detailed_info=False,
+    no_info=False,
     TTFA_info=False,
     dehint=False,
     epoch=None,
@@ -286,6 +351,9 @@ def _validate_options(kwargs):
             "unknown keyword argument%s: %s" % (
                 "s" if len(kwargs) > 1 else "",
                 ", ".join(repr(k) for k in kwargs)))
+
+    if opts["no_info"] and opts["detailed_info"]:
+        raise ValueError("no_info and detailed_info are mutually exclusive")
 
     in_file, in_buffer = opts.pop("in_file"), opts.pop("in_buffer")
     if in_file is None and in_buffer is None:
@@ -315,6 +383,12 @@ def _validate_options(kwargs):
         except AttributeError:
             with open(control_file, "rb") as f:
                 control_buffer = f.read()
+            opts["control_name"] = control_file
+        else:
+            try:
+                opts["control_name"] = control_file.name
+            except AttributeError:
+                pass
     if control_buffer is not None:
         if not isinstance(control_buffer, bytes):
             raise TypeError("control_buffer type must be bytes, not %s"
@@ -333,6 +407,16 @@ def _validate_options(kwargs):
         except AttributeError:
             with open(reference_file, "rb") as f:
                 reference_buffer = f.read()
+            if "reference_name" not in opts:
+                opts["reference_name"] = reference_file
+        else:
+            if "reference_name" not in opts:
+                try:
+                    opts["reference_name"] = tobytes(
+                        reference.name,
+                        encoding=sys.getfilesystemencoding())
+                except AttributeError:
+                    pass
     if reference_buffer is not None:
         if not isinstance(reference_buffer, bytes):
             raise TypeError("reference_buffer type must be bytes, not %s"
