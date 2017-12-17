@@ -210,16 +210,18 @@ class TALibrary(object):
         s += " -x %d" % options["increase_x_height"]
         if options["fallback_stem_width"]:
             s += " -H %d" % options["fallback_stem_width"]
-        s += " -D %s" % options["default_script"]
-        s += " -f %s" % options["fallback_script"]
+        s += " -D %s" % options["default_script"].decode("ascii")
+        s += " -f %s" % options["fallback_script"].decode("ascii")
 
         control_name = options.pop("control_name", None)
         if control_name:
-            s += ' -m "%s"' % os.path.basename(control_name)
+            s += ' -m "%s"' % os.path.basename(
+                control_name.decode(sys.getfilesystemencoding()))
 
         reference_name = options.get("reference_name")
         if reference_name:
-            s += ' -R "%s"' % os.path.basename(reference_name)
+            s += ' -R "%s"' % os.path.basename(
+                reference_name.decode(sys.getfilesystemencoding()))
 
         if options["reference_index"]:
             s += " -Z %d" % options["reference_index"]
@@ -245,7 +247,8 @@ class TALibrary(object):
             s += " -S"
         if options["TTFA_info"]:
             s += " -t"
-        s += ' -X "%s"' % options["x_height_snapping_exceptions"]
+        x_excepts = options["x_height_snapping_exceptions"].decode('ascii')
+        s += ' -X "%s"' % x_excepts
         return s
 
     def ttfautohint(self, **kwargs):
@@ -383,10 +386,12 @@ def _validate_options(kwargs):
         except AttributeError:
             with open(control_file, "rb") as f:
                 control_buffer = f.read()
-            opts["control_name"] = control_file
+            opts["control_name"] = tobytes(
+                control_file, encoding=sys.getfilesystemencoding())
         else:
             try:
-                opts["control_name"] = control_file.name
+                opts["control_name"] = tobytes(
+                    control_file.name, encoding=sys.getfilesystemencoding())
             except AttributeError:
                 pass
     if control_buffer is not None:
@@ -407,14 +412,12 @@ def _validate_options(kwargs):
         except AttributeError:
             with open(reference_file, "rb") as f:
                 reference_buffer = f.read()
-            if "reference_name" not in opts:
+            if opts["reference_name"] is not None:
                 opts["reference_name"] = reference_file
         else:
-            if "reference_name" not in opts:
+            if opts["reference_name"] is not None:
                 try:
-                    opts["reference_name"] = tobytes(
-                        reference.name,
-                        encoding=sys.getfilesystemencoding())
+                    opts["reference_name"] = reference_file.name
                 except AttributeError:
                     pass
     if reference_buffer is not None:
@@ -423,8 +426,11 @@ def _validate_options(kwargs):
                             % type(reference_buffer).__name__)
         opts['reference_buffer'] = reference_buffer
         opts['reference_buffer_len'] = len(reference_buffer)
+    if opts["reference_name"] is not None:
+        opts["reference_name"] = tobytes(
+            reference.name, encoding=sys.getfilesystemencoding())
 
-    for key in ('reference_name', 'default_script', 'fallback_script',
+    for key in ('default_script', 'fallback_script',
                 'x_height_snapping_exceptions'):
         if opts[key] is not None:
             opts[key] = tobytes(opts[key])
