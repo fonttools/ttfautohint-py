@@ -1,5 +1,5 @@
 import sys
-from ttfautohint._compat import ensure_binary
+from ttfautohint._compat import ensure_binary, ensure_text
 
 
 USER_OPTIONS = dict(
@@ -29,6 +29,7 @@ USER_OPTIONS = dict(
     symbol=False,
     fallback_stem_width=0,
     ignore_restrictions=False,
+    family_suffix=None,
     detailed_info=False,
     no_info=False,
     TTFA_info=False,
@@ -145,6 +146,9 @@ def validate_options(kwargs):
     if opts['epoch'] is not None:
         from ctypes import c_ulonglong
         opts['epoch'] = c_ulonglong(opts['epoch'])
+
+    if opts["family_suffix"] is not None:
+        opts["family_suffix"] = ensure_text(opts["family_suffix"])
 
     return opts
 

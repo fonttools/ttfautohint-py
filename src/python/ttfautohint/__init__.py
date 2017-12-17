@@ -10,7 +10,7 @@ import sys
 import os
 
 from ttfautohint import memory
-from ttfautohint.info import InfoData, info_callback
+from ttfautohint.info import InfoData, build_info_string, info_callback
 from ttfautohint.options import validate_options, format_varargs
 
 
@@ -55,15 +55,23 @@ class TALibrary(object):
         version_string = lib.TTF_autohint_version_string().decode('ascii')
         self.version_string = version_string
 
-    def ttfautohint(self, **kwargs):
-        options = validate_options(kwargs)
-
+    def _build_info_data(self, options):
+        # as a side effect, these arguments are popped from the options dict
+        # as they are not part of TTF_autohint API
+        family_suffix = options.pop("family_suffix")
         no_info = options.pop("no_info")
         detailed_info = options.pop("detailed_info")
         if no_info:
-            info_data = InfoData()
+            info_string = None
         else:
-            info_data = InfoData(self.version_string, detailed_info, **options)
+            info_string = build_info_string(self.version_string,
+                                            detailed_info, **options)
+        return InfoData(info_string, family_suffix)
+
+    def ttfautohint(self, **kwargs):
+        options = validate_options(kwargs)
+
+        info_data = self._build_info_data(options)
 
         # pop 'out_file' from options dict since we use 'out_buffer'
         out_file = options.pop('out_file')
