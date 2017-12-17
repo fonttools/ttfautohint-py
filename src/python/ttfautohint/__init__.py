@@ -9,7 +9,6 @@ from io import open
 import sys
 import os
 
-from ttfautohint._compat import ensure_binary
 from ttfautohint import memory
 from ttfautohint.info import InfoData, info_callback
 from ttfautohint.options import validate_options, format_varargs
