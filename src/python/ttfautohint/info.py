@@ -30,18 +30,18 @@ class InfoData(Structure):
 
     def __init__(self, version=None, detailed_info=True, **options):
         if version is None:
-            self.info_string = None
+            super(InfoData, self).__init__()
             return
 
         s = INFO_PREFIX + " (v%s)" % version
 
         if not detailed_info:
-            self.info_string = s
+            super(InfoData, self).__init__(s)
             return
 
         if options["dehint"]:
             s += " -d"
-            self.info_string = s
+            super(InfoData, self).__init__(s)
             return
 
         s += " -l %d" % options["hinting_range_min"]
@@ -90,7 +90,7 @@ class InfoData(Structure):
         x_excepts = ensure_text(options["x_height_snapping_exceptions"])
         s += ' -X "%s"' % x_excepts
 
-        self.info_string = s
+        super(InfoData, self).__init__(s)
 
 
 def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
