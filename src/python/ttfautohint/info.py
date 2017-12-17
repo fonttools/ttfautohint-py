@@ -100,23 +100,6 @@ class InfoData(Structure):
         super(InfoData, self).__init__(info_string, family_suffix, family_data)
 
 
-class Family(Structure):
-
-    _fields_ = [
-        ("name_id_1_len", POINTER(c_ushort)),
-        ("name_id_1_str", POINTER(POINTER(c_ubyte))),
-        ("name_id_4_len", POINTER(c_ushort)),
-        ("name_id_4_str", POINTER(POINTER(c_ubyte))),
-        ("name_id_6_len", POINTER(c_ushort)),
-        ("name_id_6_str", POINTER(POINTER(c_ubyte))),
-        ("name_id_16_len", POINTER(c_ushort)),
-        ("name_id_16_str", POINTER(POINTER(c_ubyte))),
-        ("name_id_21_len", POINTER(c_ushort)),
-        ("name_id_21_str", POINTER(POINTER(c_ubyte))),
-        ("family_name", c_wchar_p)
-    ]
-
-
 def info_name_id_5(platform_id, encoding_id, str_len_p, string_p, data):
     str_len = str_len_p[0]
     string = bytes(bytearray(string_p[0][:str_len]))
@@ -167,7 +150,34 @@ def info_name_id_5(platform_id, encoding_id, str_len_p, string_p, data):
     return 0
 
 
-FAMILY_RELATED_NAME_IDS = frozenset([1, 4, 6, 16, 21])
+class ByteString(object):
+
+    def __init__(self, string_p=None, length_p=None):
+        self.string_p = string_p
+        self.length_p = length_p
+
+    def __len__(self):
+        if self.length_p:
+            return self.length_p[0]
+        else:
+            return 0
+
+    def tobytes(self):
+        size = len(self)
+        if not size:
+            return b""
+        else:
+            assert self.string_p and self.string_p[0]
+            return bytes(bytearray(self.string_p[0][:size]))
+
+
+class Family(object):
+
+    related_name_ids = frozenset([1, 4, 6, 16, 21])
+
+    def __init__(self):
+        for name_id in self.related_name_ids:
+            setattr(self, "name_id_%d" % name_id, ByteString())
 
 
 def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
@@ -184,12 +194,11 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
                               data)
 
     # if ID is related to a family name, collect the data
-    if data.family_suffix and name_id in FAMILY_RELATED_NAME_IDS:
+    if data.family_suffix and name_id in Family.related_name_ids:
         triplet = (platform_id, encoding_id, language_id)
         family = data.family_data.setdefault(triplet, Family())
-        if name_id in FAMILY_RELATED_NAME_IDS:
-            setattr(family, "name_id_%d_len" % name_id, str_len_p)
-            setattr(family, "name_id_%d_str" % name_id, string_p)
+        name_string = ByteString(string_p, str_len_p)
+        setattr(family, "name_id_%d" % name_id, name_string)
 
     return 0
 
@@ -197,11 +206,92 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
 info_callback = TA_Info_Func_Proto(_info_callback)
 
 
+def insert_suffix(suffix, family_name, length_p, string_p):
+    if not length_p or not length_p[0] or not string_p or not string_p[0]:
+        return
+
+    new_string = family_name + suffix
+    len_new = len(new_string)
+
+    new_string_array = (c_ubyte * len_new)(*iterbytes(new_string))
+
+    new_string_p = memory.realloc(string_p[0], len_new)
+    if not new_string_p:
+        # hm, realloc failed... nevermind
+        return
+
+    string_p[0] = cast(new_string_p, POINTER(c_ubyte))
+
+    memmove(string_p[0], new_string_array, len_new)
+    length_p[0] = len_new
+
+
 def _info_post_callback(info_data_p):
     # cast void pointer to a pointer to InfoData struct
     data = cast(info_data_p, POINTER(InfoData))[0]
+    family_data = data.family_data
 
-    # TODO append family suffix
+    family_suffix = data.family_suffix.encode("ascii")
+    family_suffix_wide = data.family_suffix.encode("utf-16be")
+
+    family_suffix_stripped = data.family_suffix.replace(" ", "")
+    family_ps_suffix = family_suffix_stripped.encode("ascii")
+    family_ps_suffix_wide = family_suffix_stripped.encode("utf-16be")
+
+    for family in family_data.values():
+        if family.name_id_16:
+            family.family_name = family.name_id_16.tobytes()
+        elif family.name_id_1:
+            family.family_name = family.name_id_1.tobytes()
+
+    for (plat_id, enc_id, lang_id), family in family_data.items():
+        if hasattr(family, "family_name"):
+            family_name = family.family_name
+        else:
+            for (pid, eid, _), f in family_data.items():
+                if (pid == family.platform_id and
+                        eid == family.encoding_id and
+                        hasattr(f, "family_name")):
+                    family_name = f.family_name
+                    break
+            else:
+                continue
+        if (plat_id == 1 or (plat_id == 3 and
+                not (enc_id == 1 or enc_id == 10))):
+            is_wide = False
+            suffix = family_suffix
+        else:
+            is_wide = True
+            suffix = family_suffix_wide
+
+        insert_suffix(suffix,
+                      family_name,
+                      family.name_id_1.length_p,
+                      family.name_id_1.string_p)
+        insert_suffix(suffix,
+                      family_name,
+                      family.name_id_4.length_p,
+                      family.name_id_4.string_p)
+        insert_suffix(suffix,
+                      family_name,
+                      family.name_id_16.length_p,
+                      family.name_id_16.string_p)
+        insert_suffix(suffix,
+                      family_name,
+                      family.name_id_21.length_p,
+                      family.name_id_21.string_p)
+
+        if is_wide:
+            family_ps_name = family_name.replace(b"\0 ", b"")
+            ps_suffix = family_ps_suffix_wide
+        else:
+            family_ps_name = family_name.replace(b" ", b"")
+            ps_suffix = family_ps_suffix
+
+        insert_suffix(ps_suffix,
+                      family_ps_name,
+                      family.name_id_6.length_p,
+                      family.name_id_6.string_p)
 
     return 0
 
