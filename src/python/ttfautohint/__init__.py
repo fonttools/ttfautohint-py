@@ -185,9 +185,6 @@ class TALibrary(object):
         version_string = lib.TTF_autohint_version_string().decode('ascii')
         self.version_string = version_string
 
-        info_string = INFO_PREFIX + u" (v%s)" % version_string
-        self.info_data = InfoData(info_string)
-
     def _build_info_string(self, options):
         no_info = options.pop("no_info")
         detailed_info = options.pop("detailed_info")
