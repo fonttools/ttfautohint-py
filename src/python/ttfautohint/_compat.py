@@ -22,9 +22,9 @@ def ensure_binary(s, encoding="ascii", errors="strict"):
 
 
 def ensure_text(s, encoding="ascii", errors="strict"):
-    if isinstance(s, text_type):
-        return s.encode(encoding, errors)
-    elif isinstance(s, bytes):
+    if isinstance(s, bytes):
+        return s.decode(encoding, errors)
+    elif isinstance(s, text_type):
         return s
     else:
         raise TypeError("not expecting type '%s'" % type(s))
