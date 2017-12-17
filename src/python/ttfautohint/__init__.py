@@ -10,7 +10,9 @@ import sys
 import os
 
 from ttfautohint import memory
-from ttfautohint.info import InfoData, build_info_string, info_callback
+from ttfautohint.info import (
+    InfoData, build_info_string, info_callback, info_post_callback
+)
 from ttfautohint.options import validate_options, format_varargs
 
 
@@ -87,6 +89,7 @@ class TALibrary(object):
             alloc_func=memory.alloc_callback,
             free_func=memory.free_callback,
             info_callback=info_callback,
+            info_post_callback=info_post_callback,
             info_callback_data=byref(info_data),
             **options
         )

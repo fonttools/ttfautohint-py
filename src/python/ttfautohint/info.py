@@ -21,6 +21,9 @@ TA_Info_Func_Proto = CFUNCTYPE(
 )
 
 
+TA_Info_Post_Func_Proto = CFUNCTYPE(c_int, c_void_p)
+
+
 INFO_PREFIX = u"; ttfautohint"
 
 
@@ -100,9 +103,6 @@ class InfoData(Structure):
 class Family(Structure):
 
     _fields_ = [
-        ("platform_id", c_ushort),
-        ("encoding_id", c_ushort),
-        ("language_id", c_ushort),
         ("name_id_1_len", POINTER(c_ushort)),
         ("name_id_1_str", POINTER(POINTER(c_ubyte))),
         ("name_id_4_len", POINTER(c_ushort)),
@@ -167,20 +167,43 @@ def info_name_id_5(platform_id, encoding_id, str_len_p, string_p, data):
     return 0
 
 
+FAMILY_RELATED_NAME_IDS = frozenset([1, 4, 6, 16, 21])
+
+
 def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
                    string_p, info_data_p):
     # cast void pointer to a pointer to InfoData struct
-    info_data_p = cast(info_data_p, POINTER(InfoData))
-    data = info_data_p[0]
+    data = cast(info_data_p, POINTER(InfoData))[0]
 
     # if ID is a version string, append our data
     if data.info_string and name_id == 5:
-        return info_name_id_5(platform_id, encoding_id, str_len_p, string_p,
+        return info_name_id_5(platform_id,
+                              encoding_id,
+                              str_len_p,
+                              string_p,
                               data)
 
     # if ID is related to a family name, collect the data
-    # TODO
+    if data.family_suffix and name_id in FAMILY_RELATED_NAME_IDS:
+        triplet = (platform_id, encoding_id, language_id)
+        family = data.family_data.setdefault(triplet, Family())
+        if name_id in FAMILY_RELATED_NAME_IDS:
+            setattr(family, "name_id_%d_len" % name_id, str_len_p)
+            setattr(family, "name_id_%d_str" % name_id, string_p)
+
     return 0
 
 
 info_callback = TA_Info_Func_Proto(_info_callback)
+
+
+def _info_post_callback(info_data_p):
+    # cast void pointer to a pointer to InfoData struct
+    data = cast(info_data_p, POINTER(InfoData))[0]
+
+    # TODO append family suffix
+
+    return 0
+
+
+info_post_callback = TA_Info_Post_Func_Proto(_info_post_callback)
