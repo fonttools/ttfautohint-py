@@ -10,31 +10,12 @@ from io import BytesIO, open
 import sys
 import os
 
+from ._compat import text_type, iterbytes, ensure_binary, ensure_text
+
 
 __version__ = "0.1.0.dev0"
 
 __all__ = ["ttfautohint", "TAError"]
-
-
-PY3 = sys.version_info[0] >= 3
-if PY3:
-    text_type = str
-    iterbytes = iter
-else: # PY2
-    text_type = unicode
-    import itertools
-    import functools
-    iterbytes = functools.partial(itertools.imap, ord)
-
-
-def tobytes(s, encoding="ascii", errors="strict"):
-    if isinstance(s, text_type):
-        return s.encode(encoding, errors)
-    elif isinstance(s, bytes):
-        return s
-    else:
-        raise TypeError("not expecting type '%s'" % type(s))
-
 
 # we load the libc to get the standard malloc and free functions.
 # They will be used anyway by libttfautohint if we didn't provide the
@@ -207,18 +188,18 @@ class TALibrary(object):
         s += " -x %d" % options["increase_x_height"]
         if options["fallback_stem_width"]:
             s += " -H %d" % options["fallback_stem_width"]
-        s += " -D %s" % options["default_script"].decode("ascii")
-        s += " -f %s" % options["fallback_script"].decode("ascii")
+        s += " -D %s" % ensure_text(options["default_script"])
+        s += " -f %s" % ensure_text(options["fallback_script"])
 
         control_name = options.pop("control_name", None)
         if control_name:
             s += ' -m "%s"' % os.path.basename(
-                control_name.decode(sys.getfilesystemencoding()))
+                ensure_text(control_name, sys.getfilesystemencoding()))
 
         reference_name = options.get("reference_name")
         if reference_name:
             s += ' -R "%s"' % os.path.basename(
-                reference_name.decode(sys.getfilesystemencoding()))
+                ensure_text(reference_name, sys.getfilesystemencoding()))
 
         if options["reference_index"]:
             s += " -Z %d" % options["reference_index"]
@@ -244,7 +225,7 @@ class TALibrary(object):
             s += " -S"
         if options["TTFA_info"]:
             s += " -t"
-        x_excepts = options["x_height_snapping_exceptions"].decode('ascii')
+        x_excepts = ensure_text(options["x_height_snapping_exceptions"])
         s += ' -X "%s"' % x_excepts
         return s
 
@@ -383,11 +364,11 @@ def _validate_options(kwargs):
         except AttributeError:
             with open(control_file, "rb") as f:
                 control_buffer = f.read()
-            opts["control_name"] = tobytes(
+            opts["control_name"] = ensure_binary(
                 control_file, encoding=sys.getfilesystemencoding())
         else:
             try:
-                opts["control_name"] = tobytes(
+                opts["control_name"] = ensure_binary(
                     control_file.name, encoding=sys.getfilesystemencoding())
             except AttributeError:
                 pass
@@ -424,13 +405,13 @@ def _validate_options(kwargs):
         opts['reference_buffer'] = reference_buffer
         opts['reference_buffer_len'] = len(reference_buffer)
     if opts["reference_name"] is not None:
-        opts["reference_name"] = tobytes(
+        opts["reference_name"] = ensure_binary(
             reference.name, encoding=sys.getfilesystemencoding())
 
     for key in ('default_script', 'fallback_script',
                 'x_height_snapping_exceptions'):
         if opts[key] is not None:
-            opts[key] = tobytes(opts[key])
+            opts[key] = ensure_binary(opts[key])
 
     if opts['epoch'] is not None:
         opts['epoch'] = c_ulonglong(epoc)
@@ -440,7 +421,7 @@ def _validate_options(kwargs):
 
 def _format_varargs(**kwargs):
     items = sorted((k, v) for k, v in kwargs.items() if v is not None)
-    format_string = b", ".join(tobytes(k.replace("_", "-"))
+    format_string = b", ".join(ensure_binary(k.replace("_", "-"))
                                for k, v in items)
     values = tuple(v for k, v in items)
     return format_string, values
