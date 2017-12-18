@@ -4,8 +4,9 @@ from ctypes import (
 )
 import sys
 import os
+import array
 
-from ._compat import ensure_text, iterbytes
+from ._compat import ensure_text, iterbytes, PY3
 from . import memory
 
 
@@ -100,9 +101,59 @@ class InfoData(Structure):
         super(InfoData, self).__init__(info_string, family_suffix, family_data)
 
 
+class MutableByteString(object):
+
+    max_length = 0xFFFF
+    StringPtr = POINTER(POINTER(c_ubyte))
+    LengthPtr = POINTER(c_ushort)
+
+    def __init__(self, string_p, length_p):
+        if not isinstance(string_p, self.StringPtr):
+            raise TypeError("expected %s, found %s" % (
+                self.StringPtr.__name__, type(string_p).__name__))
+        if not string_p:
+            raise ValueError("string_p must not be NULL")
+        elif not string_p[0]:
+            raise ValueError("string_p[0] must not be NULL")
+        self.string_p = string_p
+        if not isinstance(length_p, self.LengthPtr):
+            raise TypeError("expected %s, found %s" %(
+                self.LengthPtr.__name__, type(length_p).__name__))
+        if not length_p:
+            raise ValueError("length_p must not be NULL")
+        self.length_p = length_p
+
+    def __len__(self):
+        return self.length_p[0]
+
+    def tobytes(self):
+        size = len(self)
+        if not size:
+            return b""
+        a = array.array("B", self.string_p[0][:size])
+        # tobytes is PY3 only; the equivalent tostring is deprecated :(
+        return a.tobytes() if PY3 else a.tostring()
+
+    def frombytes(self, s):
+        new_len = len(s)
+        if new_len > self.max_length:
+            raise OverflowError("string exceeds the maximum length")
+        string_p = self.string_p
+        current_len = len(self)
+        if new_len > current_len:
+            void_p = memory.realloc(string_p[0], new_len)
+            if not void_p:  # pragma: no cover
+                # realloc failed (unlikely)
+                raise MemoryError()
+            string = string_p[0] = cast(void_p, POINTER(c_ubyte))
+        for i, b in enumerate(iterbytes(s)):
+            string[i] = b
+        self.length_p[0] = new_len
+
+
 def info_name_id_5(platform_id, encoding_id, str_len_p, string_p, data):
-    str_len = str_len_p[0]
-    string = bytes(bytearray(string_p[0][:str_len]))
+    name_string = MutableByteString(string_p, str_len_p)
+    string = name_string.tobytes()
 
     if (platform_id == 1 or
             (platform_id == 3 and not (
@@ -130,45 +181,15 @@ def info_name_id_5(platform_id, encoding_id, str_len_p, string_p, data):
     else:
         new_string = string + info_string
 
-    # do nothing if the string would become too long
-    len_new = len(new_string)
-    if len_new > 0xFFFF:
-        return 0
-
-    new_string_array = (c_ubyte * len_new)(*iterbytes(new_string))
-
-    new_string_p = memory.realloc(string_p[0], len_new)
-    if not new_string_p:
-        # hm, realloc failed... nevermind
+    try:
+        name_string.frombytes(new_string)
+    except OverflowError:
+        # do nothing if the string would become too long
+        pass
+    except MemoryError:  # pragma: no cover
+        # return non-zero in the unlikely event of landing on water
         return 1
-
-    string_p[0] = cast(new_string_p, POINTER(c_ubyte))
-
-    memmove(string_p[0], new_string_array, len_new)
-    str_len_p[0] = len_new
-
     return 0
-
-
-class ByteString(object):
-
-    def __init__(self, string_p=None, length_p=None):
-        self.string_p = string_p
-        self.length_p = length_p
-
-    def __len__(self):
-        if self.length_p:
-            return self.length_p[0]
-        else:
-            return 0
-
-    def tobytes(self):
-        size = len(self)
-        if not size:
-            return b""
-        else:
-            assert self.string_p and self.string_p[0]
-            return bytes(bytearray(self.string_p[0][:size]))
 
 
 class Family(object):
@@ -177,7 +198,7 @@ class Family(object):
 
     def __init__(self):
         for name_id in self.related_name_ids:
-            setattr(self, "name_id_%d" % name_id, ByteString())
+            setattr(self, "name_id_%d" % name_id, None)
 
 
 def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
@@ -197,7 +218,7 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
     if data.family_suffix and name_id in Family.related_name_ids:
         triplet = (platform_id, encoding_id, language_id)
         family = data.family_data.setdefault(triplet, Family())
-        name_string = ByteString(string_p, str_len_p)
+        name_string = MutableByteString(string_p, str_len_p)
         setattr(family, "name_id_%d" % name_id, name_string)
 
     return 0
@@ -206,24 +227,13 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
 info_callback = TA_Info_Func_Proto(_info_callback)
 
 
-def insert_suffix(suffix, family_name, length_p, string_p):
-    if not length_p or not length_p[0] or not string_p or not string_p[0]:
-        return
-
+def insert_suffix(suffix, family_name, name_string):
+    # TODO insert suffix after substring, not always at the end
     new_string = family_name + suffix
-    len_new = len(new_string)
-
-    new_string_array = (c_ubyte * len_new)(*iterbytes(new_string))
-
-    new_string_p = memory.realloc(string_p[0], len_new)
-    if not new_string_p:
-        # hm, realloc failed... nevermind
-        return
-
-    string_p[0] = cast(new_string_p, POINTER(c_ubyte))
-
-    memmove(string_p[0], new_string_array, len_new)
-    length_p[0] = len_new
+    try:
+        name_string.frombytes(new_string)
+    except (OverflowError, MemoryError):
+        pass  # warn?
 
 
 def _info_post_callback(info_data_p):
@@ -258,40 +268,24 @@ def _info_post_callback(info_data_p):
                 continue
         if (plat_id == 1 or (plat_id == 3 and
                 not (enc_id == 1 or enc_id == 10))):
-            is_wide = False
             suffix = family_suffix
-        else:
-            is_wide = True
-            suffix = family_suffix_wide
-
-        insert_suffix(suffix,
-                      family_name,
-                      family.name_id_1.length_p,
-                      family.name_id_1.string_p)
-        insert_suffix(suffix,
-                      family_name,
-                      family.name_id_4.length_p,
-                      family.name_id_4.string_p)
-        insert_suffix(suffix,
-                      family_name,
-                      family.name_id_16.length_p,
-                      family.name_id_16.string_p)
-        insert_suffix(suffix,
-                      family_name,
-                      family.name_id_21.length_p,
-                      family.name_id_21.string_p)
-
-        if is_wide:
-            family_ps_name = family_name.replace(b"\0 ", b"")
-            ps_suffix = family_ps_suffix_wide
-        else:
-            family_ps_name = family_name.replace(b" ", b"")
             ps_suffix = family_ps_suffix
+            family_ps_name = family_name.replace(b" ", b"")
+        else:
+            suffix = family_suffix_wide
+            ps_suffix = family_ps_suffix_wide
+            family_ps_name = family_name.replace(b"\0 ", b"")
 
-        insert_suffix(ps_suffix,
-                      family_ps_name,
-                      family.name_id_6.length_p,
-                      family.name_id_6.string_p)
+        if family.name_id_1:
+            insert_suffix(suffix, family_name, family.name_id_1)
+        if family.name_id_4:
+            insert_suffix(suffix, family_name, family.name_id_4)
+        if family.name_id_6:
+            insert_suffix(ps_suffix, family_ps_name, family.name_id_6)
+        if family.name_id_16:
+            insert_suffix(suffix, family_name, family.name_id_16)
+        if family.name_id_21:
+            insert_suffix(suffix, family_name, family.name_id_21)
 
     return 0
 
