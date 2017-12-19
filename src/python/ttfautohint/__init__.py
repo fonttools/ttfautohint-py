@@ -14,6 +14,7 @@ from ttfautohint.info import (
     InfoData, build_info_string, info_callback, info_post_callback
 )
 from ttfautohint.options import validate_options, format_varargs
+from ttfautohint.progress import ProgressPrinter, ProgressData
 
 
 __version__ = "0.1.0.dev0"
@@ -78,14 +79,21 @@ class TALibrary(object):
         if not info_data.family_suffix:
             info_post_callback = None
 
+        if options.pop("verbose"):
+            # by default, it prints to stderr like ttfautohint.exe
+            # TODO: figure out a way to implement progress using logging?
+            printer = ProgressPrinter()
+            progress_callback = printer.callback
+        else:
+            progress_callback = None
+        progress_callback_data = ProgressData()
+
         # pop 'out_file' from options dict since we use 'out_buffer'
         out_file = options.pop('out_file')
 
         out_buffer_p = POINTER(c_char)()
         out_buffer_len = c_size_t(0)
         error_string = c_char_p()
-        # TODO: implement progress callback
-        verbose = options.pop("verbose")
 
         option_keys, option_values = format_varargs(
             out_buffer=byref(out_buffer_p),
@@ -96,6 +104,8 @@ class TALibrary(object):
             info_callback=info_callback,
             info_post_callback=info_post_callback,
             info_callback_data=byref(info_data),
+            progress_callback=progress_callback,
+            progress_callback_data=byref(progress_callback_data),
             **options
         )
 

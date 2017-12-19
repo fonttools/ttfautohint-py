@@ -57,6 +57,8 @@ PRIVATE_OPTIONS = frozenset([
     "info_callback",
     "info_post_callback",
     "info_callback_data",
+    "progress_callback",
+    "progress_callback_data",
 ])
 
 ALL_OPTIONS = frozenset(USER_OPTIONS) | PRIVATE_OPTIONS
