@@ -50,6 +50,12 @@ class TAError(Exception):
                 s += "\n  %s" % errline
                 if errpos > -1:
                     s += "\n  %s^" % (" "*errpos)
+        elif error >= 0x300 and error < 0x400:
+            error -= 0x300
+            s = "error while loading the reference font"
+            if error_string:
+                s += ": %s" % error_string
+            s += " (0x%02X)" % error
         else:
             s = "0x%02X" % error
             if error_string:
