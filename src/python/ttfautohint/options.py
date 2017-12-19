@@ -1,5 +1,6 @@
 import sys
-from ttfautohint._compat import ensure_binary, ensure_text
+import os
+from ttfautohint._compat import ensure_binary, ensure_text, basestring, open
 
 
 USER_OPTIONS = dict(
@@ -17,9 +18,6 @@ USER_OPTIONS = dict(
     hinting_limit=200,
     hint_composites=False,
     adjust_subglyphs=False,
-    gray_strong_stem_width=False,
-    gdi_cleartype_strong_stem_width=True,
-    dw_cleartype_strong_stem_width=False,
     increase_x_height=14,
     x_height_snapping_exceptions="",
     windows_compatibility=False,
@@ -37,6 +35,14 @@ USER_OPTIONS = dict(
     epoch=None,
     debug=False,
 )
+
+STRONG_STEM_WIDTH_OPTIONS = dict(
+    gdi_cleartype_strong_stem_width=True,
+    gray_strong_stem_width=False,
+    dw_cleartype_strong_stem_width=False,
+)
+
+USER_OPTIONS.update(STRONG_STEM_WIDTH_OPTIONS)
 
 PRIVATE_OPTIONS = frozenset([
     "in_buffer_len",
@@ -160,3 +166,209 @@ def format_varargs(**options):
                                for k, v in items)
     values = tuple(v for k, v in items)
     return format_string, values
+
+
+def strong_stem_width(s):
+    if len(s) > 3:
+        import argparse
+        raise argparse.ArgumentTypeError(
+            "string can only contain up to 3 letters")
+    valid = {
+        "g": "gray_strong_stem_width",
+        "G": "gdi_cleartype_strong_stem_width",
+        "D": "dw_cleartype_strong_stem_width"}
+    chars = set(s)
+    invalid = chars - set(valid)
+    if invalid:
+        import argparse
+        raise argparse.ArgumentTypeError(
+            "invalid value: %s" % ", ".join(
+                repr(v) for v in sorted(invalid)))
+    result = {}
+    for char, opt_name in valid.items():
+        result[opt_name] = char in chars
+    return result
+
+
+def stdin_or_input_path_type(s):
+    # the special argument "-" means sys.stdin
+    if s == "-":
+        return open(sys.stdin.fileno(), mode="rb", closefd=False)
+    return s
+
+
+def stdout_or_output_path_type(s):
+    # the special argument "-" means sys.stdout
+    if s == "-":
+        return open(sys.stdout.fileno(), mode="wb", closefd=False)
+    return s
+
+
+def parse_args(args=None):
+    """Parse command line arguments and return a dictionary of options
+    for ttfautohint.ttfautohint function.
+
+    `args` can be either None, a list of strings, or a single string,
+    that is split into individual options with `shlex.split`.
+
+    When `args` is None, the console's default sys.argv are used, and any
+    SystemExit exceptions raised by argparse are propagated.
+
+    If args is a string list or a string, it is assumed that the function
+    was not called from a console script's `main` entry point, but from
+    other client code, and thus the SystemExit exceptions are muted and
+    a `None` value is returned.
+    """
+    import argparse
+    from ttfautohint.cli import USAGE, DESCRIPTION, EPILOG, VERSION_STRING
+
+    if args is None:
+        capture_sys_exit = False
+    else:
+        capture_sys_exit = True
+        if isinstance(args, basestring):
+            import shlex
+            args = shlex.split(args)
+
+    parser = argparse.ArgumentParser(
+        prog="ttfautohint",
+        usage=USAGE,
+        description=DESCRIPTION,
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "in_file", nargs="?", metavar="IN-FILE", default="-",
+        type=stdin_or_input_path_type,
+        help="input file (default: standard input)")
+    parser.add_argument(
+        "out_file", nargs="?", metavar="OUT-FILE", default="-",
+        type=stdout_or_output_path_type,
+        help="output file (default: standard output)")
+    parser.add_argument(
+        "--debug", action="store_true", help="print debugging information")
+    parser.add_argument(
+        "-c", "--composites", dest="hint_composites", action="store_true",
+        help="hint glyph composites also")
+    parser.add_argument(
+        "--dehint", action="store_true", help="remove all hints")
+    parser.add_argument(
+        "-D", "--default-script", metavar="SCRIPT",
+        default=USER_OPTIONS["default_script"],
+        help="set default OpenType script (default: %(default)s)")
+    parser.add_argument(
+        "-f", "--fallback-script", metavar="SCRIPT",
+        default=USER_OPTIONS["fallback_script"],
+        help="set fallback script (default: %(default)s)")
+    parser.add_argument(
+        "-G", "--hinting-limit", type=int, metavar="PPEM",
+        default=USER_OPTIONS["hinting_limit"],
+        help=("switch off hinting above this PPEM value (default: "
+              "%(default)s); value 0 means no limit"))
+    parser.add_argument(
+        "-H", "--fallback-stem-width", type=int, metavar="UNITS",
+        default=USER_OPTIONS["fallback_stem_width"],
+        help=("set fallback stem width (default: %(default)s font units at "
+              "2048 UPEM)"))
+    parser.add_argument(
+        "-i", "--ignore-restrictions", action="store_true",
+        help="override font license restrictions")
+    parser.add_argument(
+        "-I", "--detailed-info", action="store_true",
+        help=("add detailed ttfautohint info to the version string(s) in "
+              "the `name' table"))
+    parser.add_argument(
+        "-l", "--hinting-range-min", type=int, metavar="PPEM",
+        default=USER_OPTIONS["hinting_range_min"],
+        help="the minimum PPEM value for hint sets (default: %(default)s)")
+    parser.add_argument(
+        "-m", "--control-file", metavar="FILE",
+        help="get control instructions from FILE")
+    parser.add_argument(
+        "-n", "--no-info", action="store_true",
+        help=("don't add ttfautohint info to the version string(s) in the "
+              "`name' table"))
+    parser.add_argument(
+        "-p", "--adjust-subglyphs", action="store_true",
+        help="handle subglyph adjustments in exotic fonts")
+    parser.add_argument(
+        "-r", "--hinting-range-max", type=int, metavar="PPEM",
+        default=USER_OPTIONS["hinting_range_max"],
+        help="the maximum PPEM value for hint sets (default: %(default)s)")
+    parser.add_argument(
+        "-R", "--reference", dest="reference_file", metavar="FILE",
+        help="derive blue zones from reference font FILE")
+    parser.add_argument(
+        "-s", "--symbol", action="store_true",
+        help="input is symbol font")
+    parser.add_argument(
+        "-S", "--fallback-scaling", action="store_true",
+        help="use fallback scaling, not hinting")
+    parser.add_argument(
+        "-t", "--ttfa-table", action="store_true", dest="TTFA_info",
+        help="add TTFA information table")
+    parser.add_argument(
+        "-T", "--ttfa-info", dest="show_TTFA_info",
+        help="display TTFA table in IN-FILE and exit")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true",
+        help="show progress information")
+    parser.add_argument(
+        "-V", "--version", action="version",
+        version=VERSION_STRING,
+        help="print version information and exit")
+    parser.add_argument(
+        "-w", "--strong-stem-width", type=strong_stem_width, metavar="S",
+        default=STRONG_STEM_WIDTH_OPTIONS,
+        help=("use strong stem width routine for modes S, where S is a "
+              "string of up to three letters with possible values `g' for "
+              "grayscale, `G' for GDI ClearType, and `D' for DirectWrite "
+              "ClearType (default: G)"))
+    parser.add_argument(
+        "-W", "--windows-compatibility", action="store_true",
+        help=("add blue zones for `usWinAscent' and `usWinDescent' to avoid "
+              "clipping"))
+    parser.add_argument(
+        "-x", "--increase-x-height", type=int, metavar="PPEM",
+        default=USER_OPTIONS["increase_x_height"],
+        help=("increase x height for sizes in the range 6<=PPEM<=N; value "
+              "0 switches off this feature (default: %(default)s)"))
+    parser.add_argument(
+        "-X", "--x-height-snapping-exceptions", metavar="STRING",
+        default=USER_OPTIONS["x_height_snapping_exceptions"],
+        help=('specify a comma-separated list of x-height snapping exceptions'
+              ', for example "-9, 13-17, 19" (default: "%(default)s")'))
+    parser.add_argument(
+        "-Z", "--reference-index", type=int, metavar="NUMBER",
+        default=USER_OPTIONS["reference_index"],
+        help="face index of reference font (default: %(default)s)")
+
+    try:
+        options = vars(parser.parse_args(args))
+    except SystemExit:
+        if capture_sys_exit:
+            return None
+        raise
+
+    # if either input/output are interactive, print help and exit
+    for io_option in ("in_file", "out_file"):
+        try:
+            if options[io_option].isatty():
+                parser.print_help()
+                if capture_sys_exit:
+                    return None
+                parser.exit(1)
+        except AttributeError:  # it's a path string
+            continue
+
+    # TODO: implement progress callback
+    del options["verbose"]
+
+    if options.pop("show_TTFA_info"):
+        # TODO use fonttools to dump TTFA table?
+        raise NotImplementedError()
+
+    stem_width_options = options.pop("strong_stem_width")
+    options.update(stem_width_options)
+
+    return options

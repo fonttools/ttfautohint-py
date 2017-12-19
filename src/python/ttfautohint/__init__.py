@@ -75,6 +75,9 @@ class TALibrary(object):
 
         info_data = self._build_info_data(options)
 
+        if not info_data.family_suffix:
+            info_post_callback = None
+
         # pop 'out_file' from options dict since we use 'out_buffer'
         out_file = options.pop('out_file')
 
