@@ -59,6 +59,8 @@ PRIVATE_OPTIONS = frozenset([
     "info_callback_data",
     "progress_callback",
     "progress_callback_data",
+    "error_callback",
+    "error_callback_data",
 ])
 
 ALL_OPTIONS = frozenset(USER_OPTIONS) | PRIVATE_OPTIONS
@@ -103,12 +105,14 @@ def validate_options(kwargs):
         except AttributeError:
             with open(control_file, "rb") as f:
                 control_buffer = f.read()
-            opts["control_name"] = ensure_binary(
-                control_file, encoding=sys.getfilesystemencoding())
+            opts["control_name"] = ensure_text(
+                control_file, encoding=sys.getfilesystemencoding(),
+                errors="replace")
         else:
             try:
-                opts["control_name"] = ensure_binary(
-                    control_file.name, encoding=sys.getfilesystemencoding())
+                opts["control_name"] = ensure_text(
+                    control_file.name, encoding=sys.getfilesystemencoding(),
+                    errors="replace")
             except AttributeError:
                 pass
     if control_buffer is not None:

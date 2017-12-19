@@ -13,6 +13,8 @@ from ttfautohint import memory
 from ttfautohint import info
 from ttfautohint import progress
 from ttfautohint.options import validate_options, format_varargs, parse_args
+from ttfautohint import errors
+from ttfautohint.errors import TAError
 
 
 __version__ = "0.1.0.dev0"
@@ -88,6 +90,10 @@ class TALibrary(object):
             progress_callback = None
         progress_callback_data = progress.ProgressData()
 
+        error_callback = errors.error_callback
+        control_name = options.pop("control_name", None)
+        error_callback_data = errors.ErrorData(control_name)
+
         # pop 'out_file' from options dict since we use 'out_buffer'
         out_file = options.pop('out_file')
 
@@ -106,12 +112,14 @@ class TALibrary(object):
             info_callback_data=byref(info_data),
             progress_callback=progress_callback,
             progress_callback_data=byref(progress_callback_data),
+            error_callback=error_callback,
+            error_callback_data=byref(error_callback_data),
             **options
         )
 
         rv = self.lib.TTF_autohint(option_keys, *option_values)
         if rv:
-            raise TAError(rv, error_string)
+            raise TAError(rv, **error_callback_data.kwargs)
 
         assert out_buffer_len.value
 
@@ -133,16 +141,5 @@ class TALibrary(object):
 
 
 libttfautohint = TALibrary()
-
-
-class TAError(Exception):
-
-    def __init__(self, rv, error_string):
-        self.rv = rv
-        self.error_string = error_string.value or b""
-
-    def __str__(self):
-        return "%d: %s" % (self.rv, self.error_string.decode('utf-8'))
-
 
 ttfautohint = libttfautohint.ttfautohint
