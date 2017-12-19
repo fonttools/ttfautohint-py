@@ -1,16 +1,24 @@
 from __future__ import print_function
 import ttfautohint
 from ttfautohint.options import parse_args
+import logging
+
+log = logging.getLogger("ttfautohint")
 
 
 def main(args=None):
     options = parse_args(args)
 
+    logging.basicConfig(
+        level=("DEBUG" if options["debug"] else
+               "INFO" if options["verbose"] else "WARNING"),
+        format="%(name)s: %(levelname)s: %(message)s",
+    )
+
     try:
         ttfautohint.ttfautohint(**options)
     except ttfautohint.TAError as e:
-        import sys
-        print("ttfautohint: error: %s" % e, file=sys.stderr)
+        log.error(e)
         return e.rv
 
 

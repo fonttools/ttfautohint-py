@@ -34,6 +34,7 @@ USER_OPTIONS = dict(
     dehint=False,
     epoch=None,
     debug=False,
+    verbose=False,
 )
 
 STRONG_STEM_WIDTH_OPTIONS = dict(
@@ -364,10 +365,12 @@ def parse_args(args=None):
     # check SOURCE_DATE_EPOCH environment variable
     source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if source_date_epoch:
-        options["epoch"] = int(source_date_epoch)
-
-    # TODO: implement progress callback
-    del options["verbose"]
+        try:
+            options["epoch"] = int(source_date_epoch)
+        except ValueError:
+            import logging
+            log = logging.getLogger("ttfautohint")
+            log.warning("invalid SOURCE_DATE_EPOCH: %r", source_date_epoch)
 
     if options.pop("show_TTFA_info"):
         # TODO use fonttools to dump TTFA table?

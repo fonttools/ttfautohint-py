@@ -84,6 +84,8 @@ class TALibrary(object):
         out_buffer_p = POINTER(c_char)()
         out_buffer_len = c_size_t(0)
         error_string = c_char_p()
+        # TODO: implement progress callback
+        verbose = options.pop("verbose")
 
         option_keys, option_values = format_varargs(
             out_buffer=byref(out_buffer_p),
