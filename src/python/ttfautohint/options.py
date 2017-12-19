@@ -251,7 +251,7 @@ def parse_args(args=None):
         "-c", "--composites", dest="hint_composites", action="store_true",
         help="hint glyph composites also")
     parser.add_argument(
-        "--dehint", action="store_true", help="remove all hints")
+        "-d", "--dehint", action="store_true", help="remove all hints")
     parser.add_argument(
         "-D", "--default-script", metavar="SCRIPT",
         default=USER_OPTIONS["default_script"],
