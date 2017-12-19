@@ -314,7 +314,7 @@ def parse_args(args=None):
         "-t", "--ttfa-table", action="store_true", dest="TTFA_info",
         help="add TTFA information table")
     parser.add_argument(
-        "-T", "--ttfa-info", dest="show_TTFA_info",
+        "-T", "--ttfa-info", dest="show_TTFA_info", action="store_true",
         help="display TTFA table in IN-FILE and exit")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
