@@ -361,6 +361,11 @@ def parse_args(args=None):
         except AttributeError:  # it's a path string
             continue
 
+    # check SOURCE_DATE_EPOCH environment variable
+    source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    if source_date_epoch:
+        options["epoch"] = int(source_date_epoch)
+
     # TODO: implement progress callback
     del options["verbose"]
 
