@@ -99,12 +99,10 @@ class TALibrary(object):
 
         out_buffer_p = POINTER(c_char)()
         out_buffer_len = c_size_t(0)
-        error_string = c_char_p()
 
         option_keys, option_values = format_varargs(
             out_buffer=byref(out_buffer_p),
             out_buffer_len=byref(out_buffer_len),
-            error_string=byref(error_string),
             alloc_func=memory.alloc_callback,
             free_func=memory.free_callback,
             info_callback=info.info_callback,
