@@ -1,13 +1,12 @@
 from __future__ import print_function
 import ttfautohint
-from ttfautohint.options import parse_args
 import logging
 
 log = logging.getLogger("ttfautohint")
 
 
 def main(args=None):
-    options = parse_args(args)
+    options = ttfautohint.parse_args(args)
 
     logging.basicConfig(
         level=("DEBUG" if options["debug"] else

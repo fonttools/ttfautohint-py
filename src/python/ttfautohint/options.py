@@ -264,6 +264,9 @@ def parse_args(args=None):
         default=USER_OPTIONS["fallback_script"],
         help="set fallback script (default: %(default)s)")
     parser.add_argument(
+        "-F", "--family-suffix", metavar="SUFFIX",
+        help="append SUFFIX to the family name string(s) in the `name' table")
+    parser.add_argument(
         "-G", "--hinting-limit", type=int, metavar="PPEM",
         default=USER_OPTIONS["hinting_limit"],
         help=("switch off hinting above this PPEM value (default: "

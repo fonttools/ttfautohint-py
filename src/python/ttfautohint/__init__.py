@@ -10,16 +10,14 @@ import sys
 import os
 
 from ttfautohint import memory
-from ttfautohint.info import (
-    InfoData, build_info_string, info_callback, info_post_callback
-)
-from ttfautohint.options import validate_options, format_varargs
-from ttfautohint.progress import ProgressPrinter, ProgressData
+from ttfautohint import info
+from ttfautohint import progress
+from ttfautohint.options import validate_options, format_varargs, parse_args
 
 
 __version__ = "0.1.0.dev0"
 
-__all__ = ["ttfautohint", "TAError"]
+__all__ = ["ttfautohint", "parse_args", "TAError"]
 
 
 class TALibrary(object):
@@ -67,26 +65,28 @@ class TALibrary(object):
         if no_info:
             info_string = None
         else:
-            info_string = build_info_string(self.version_string,
-                                            detailed_info, **options)
-        return InfoData(info_string, family_suffix)
+            info_string = info.build_info_string(self.version_string,
+                                                 detailed_info, **options)
+        return info.InfoData(info_string, family_suffix)
 
     def ttfautohint(self, **kwargs):
         options = validate_options(kwargs)
 
         info_data = self._build_info_data(options)
 
-        if not info_data.family_suffix:
+        if info_data.family_suffix:
+            info_post_callback = info.info_post_callback
+        else:
             info_post_callback = None
 
         if options.pop("verbose"):
             # by default, it prints to stderr like ttfautohint.exe
             # TODO: figure out a way to implement progress using logging?
-            printer = ProgressPrinter()
+            printer = progress.ProgressPrinter()
             progress_callback = printer.callback
         else:
             progress_callback = None
-        progress_callback_data = ProgressData()
+        progress_callback_data = progress.ProgressData()
 
         # pop 'out_file' from options dict since we use 'out_buffer'
         out_file = options.pop('out_file')
@@ -101,7 +101,7 @@ class TALibrary(object):
             error_string=byref(error_string),
             alloc_func=memory.alloc_callback,
             free_func=memory.free_callback,
-            info_callback=info_callback,
+            info_callback=info.info_callback,
             info_post_callback=info_post_callback,
             info_callback_data=byref(info_data),
             progress_callback=progress_callback,
