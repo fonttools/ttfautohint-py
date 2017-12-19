@@ -228,8 +228,18 @@ info_callback = TA_Info_Func_Proto(_info_callback)
 
 
 def insert_suffix(suffix, family_name, name_string):
-    # TODO insert suffix after substring, not always at the end
-    new_string = family_name + suffix
+    string = name_string.tobytes()
+
+    # check whether family_name is a substring
+    start = string.find(family_name)
+    if start != -1:
+        # insert suffix after the family_name substring
+        end = start + len(family_name)
+        new_string = string[:end] + suffix + string[end:]
+    else:
+        # it's not, we just append the suffix at the end
+        new_string = family_name + suffix
+
     try:
         name_string.frombytes(new_string)
     except (OverflowError, MemoryError):
