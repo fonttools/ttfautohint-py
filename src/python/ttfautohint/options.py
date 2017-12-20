@@ -133,10 +133,10 @@ def validate_options(kwargs):
         except AttributeError:
             with open(reference_file, "rb") as f:
                 reference_buffer = f.read()
-            if opts["reference_name"] is not None:
+            if opts["reference_name"] is None:
                 opts["reference_name"] = reference_file
         else:
-            if opts["reference_name"] is not None:
+            if opts["reference_name"] is None:
                 try:
                     opts["reference_name"] = reference_file.name
                 except AttributeError:
