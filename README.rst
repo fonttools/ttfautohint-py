@@ -1,4 +1,4 @@
-|Travis CI Status| |Appveyor CI Status|
+|Travis CI Status| |Appveyor CI Status| |PyPI|
 
 ttfautohint-py
 ~~~~~~~~~~~~~~
@@ -11,7 +11,16 @@ It uses `ctypes <https://docs.python.org/3/library/ctypes.html>`__ to load the
 ``libttfautohint`` shared library and call the ``TTF_autohint`` function.
 
 Binary "wheel" packages are available for Linux (``manylinux1``), macOS and
-Windows. These include a precompiled ``libttfautohint.so`` (``*.dylib`` on
+Windows, for both Python 2.7 and Python 3.x, with 32 and 64 bit architecture.
+They can be installed from the Python Package Index
+(`PyPI <https://pypi.python.org/pypi/ttfautohint-py>`__) using the
+`pip <https://pip.pypa.io/en/stable/>`__ installer.
+
+.. code:: sh
+
+    $ pip install ttfautohint-py
+
+The wheels include a precompiled ``libttfautohint.so`` (``*.dylib`` on
 macOS, or ``*.dll`` on Windows) shared library which has no other dependency
 apart from system libraries. The `FreeType <https://www.freetype.org>`__ and
 the `HarfBuzz <https://github.com/harfbuzz/harfbuzz>`__ libraries are compiled
@@ -36,3 +45,5 @@ documentation of these libraries for more information.
    :target: https://travis-ci.org/fonttools/ttfautohint-py
 .. |Appveyor CI Status| image:: https://ci.appveyor.com/api/projects/status/v3aoglkmbhtgsfao/branch/master?svg=true
    :target: https://ci.appveyor.com/project/fonttools/ttfautohint-py/
+.. |PyPI| image:: https://img.shields.io/pypi/v/ttfautohint-py.svg
+   :target: https://pypi.python.org/pypi/ttfautohint-py
