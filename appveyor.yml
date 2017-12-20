@@ -1,4 +1,7 @@
 environment:
+  PYPI_USER: "anthrotype"
+  PYPI_PSWD:
+    secure: 3MYRWT1R2pwRunaCYHAqlQ==
   global:
     PACKAGE_NAME: ttfautohint-py
   matrix:
@@ -63,3 +66,14 @@ test_script:
 artifacts:
   # archive the generated packages in the ci.appveyor.com build report
   - path: dist\*.whl
+
+# Deploy wheels on tags to PyPI
+on_success:
+  - ps: >-
+      if($env:APPVEYOR_REPO_TAG -eq 'true') {
+        Write-Output ("Deploying " + $env:APPVEYOR_REPO_TAG_NAME + " to PyPI...")
+        pip install --upgrade twine
+        twine upload -u $env:PYPI_USER -p $env:PYPI_PSWD dist\*.whl
+      } else {
+        Write-Output "Not deploying as this is not a tagged commit"
+      }
