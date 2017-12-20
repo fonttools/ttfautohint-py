@@ -20,7 +20,8 @@ function pre_build {
         which glibtool
         glibtool --version
     else
-        build_libtool
+        # it's already up-to-date on the latest manylinux1 docker image
+        # build_libtool
         build_ragel
         build_flex
         build_bison
