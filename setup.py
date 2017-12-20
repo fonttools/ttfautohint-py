@@ -109,7 +109,7 @@ with open("README.rst", "r", encoding="utf-8") as readme:
 
 setup(
     name="ttfautohint-py",
-    version="0.1.0.dev2",
+    version="0.1.0",
     description=("Python wrapper for ttfautohint, "
                  "a free auto-hinter for TrueType fonts"),
     long_description=long_description,

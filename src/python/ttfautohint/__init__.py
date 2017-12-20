@@ -18,7 +18,7 @@ from ttfautohint.errors import TAError
 from ttfautohint import cli
 
 
-__version__ = "0.1.0.dev2"
+__version__ = "0.1.0"
 
 __all__ = ["ttfautohint", "TAError"]
 
