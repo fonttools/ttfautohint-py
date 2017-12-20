@@ -17,7 +17,7 @@ from ttfautohint import errors
 from ttfautohint.errors import TAError
 
 
-__version__ = "0.1.0.dev1"
+__version__ = "0.1.0.dev2"
 
 __all__ = ["ttfautohint", "parse_args", "TAError"]
 
