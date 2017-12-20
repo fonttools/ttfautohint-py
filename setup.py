@@ -106,7 +106,7 @@ libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
 
 setup(
     name="ttfautohint-py",
-    version="0.1.0.dev0",
+    version="0.1.0.dev1",
     description=("Python wrapper for ttfautohint, "
                  "a free auto-hinter for TrueType fonts"),
     author="Cosimo Lupo",
