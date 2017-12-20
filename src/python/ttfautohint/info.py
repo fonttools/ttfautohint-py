@@ -145,7 +145,8 @@ class MutableByteString(object):
             if not void_p:  # pragma: no cover
                 # realloc failed (unlikely)
                 raise MemoryError()
-            string = string_p[0] = cast(void_p, POINTER(c_ubyte))
+            string_p[0] = cast(void_p, POINTER(c_ubyte))
+        string = string_p[0]
         for i, b in enumerate(iterbytes(s)):
             string[i] = b
         self.length_p[0] = new_len
