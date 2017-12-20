@@ -12,14 +12,15 @@ import os
 from ttfautohint import memory
 from ttfautohint import info
 from ttfautohint import progress
-from ttfautohint.options import validate_options, format_varargs, parse_args
+from ttfautohint.options import validate_options, format_varargs
 from ttfautohint import errors
 from ttfautohint.errors import TAError
+from ttfautohint import cli
 
 
 __version__ = "0.1.0.dev2"
 
-__all__ = ["ttfautohint", "parse_args", "TAError"]
+__all__ = ["ttfautohint", "TAError"]
 
 
 class TALibrary(object):

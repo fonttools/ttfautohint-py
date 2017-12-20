@@ -6,7 +6,13 @@ log = logging.getLogger("ttfautohint")
 
 
 def main(args=None):
-    options = ttfautohint.parse_args(args)
+    options = ttfautohint.options.parse_args(args)
+
+    # `parse_args` can return None instead of raising SystemExit on invalid
+    # arguments, when `args` are passed. When it's called with args=None
+    # (e.g. from a console script's `main()`), SystemExit is propagated.
+    if options is None:
+        return 2
 
     logging.basicConfig(
         level=("DEBUG" if options["debug"] else
@@ -20,10 +26,6 @@ def main(args=None):
         log.error(e)
         return e.rv
 
-
-VERSION_STRING = "ttfautohint-py %s (libttfautohint %s)" % (
-    ttfautohint.__version__,
-    ttfautohint.libttfautohint.version_string)
 
 USAGE = "ttfautohint [OPTION]... [IN-FILE [OUT-FILE]]"
 

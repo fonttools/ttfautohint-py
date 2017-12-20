@@ -227,7 +227,11 @@ def parse_args(args=None):
     a `None` value is returned.
     """
     import argparse
-    from ttfautohint.cli import USAGE, DESCRIPTION, EPILOG, VERSION_STRING
+    from ttfautohint import __version__, libttfautohint
+    from ttfautohint.cli import USAGE, DESCRIPTION, EPILOG
+
+    version_string = "ttfautohint-py %s (libttfautohint %s)" % (
+        __version__, libttfautohint.version_string)
 
     if args is None:
         capture_sys_exit = False
@@ -325,7 +329,7 @@ def parse_args(args=None):
         help="show progress information")
     parser.add_argument(
         "-V", "--version", action="version",
-        version=VERSION_STRING,
+        version=version_string,
         help="print version information and exit")
     parser.add_argument(
         "-w", "--strong-stem-width", type=strong_stem_width, metavar="S",
@@ -355,21 +359,20 @@ def parse_args(args=None):
 
     try:
         options = vars(parser.parse_args(args))
+
+        # if either input/output are interactive, print help and exit
+        for io_option in ("in_file", "out_file"):
+            try:
+                if options[io_option].isatty():
+                    parser.print_help()
+                    parser.exit(1)
+            except AttributeError:  # it's a path string
+                continue
+
     except SystemExit:
         if capture_sys_exit:
             return None
         raise
-
-    # if either input/output are interactive, print help and exit
-    for io_option in ("in_file", "out_file"):
-        try:
-            if options[io_option].isatty():
-                parser.print_help()
-                if capture_sys_exit:
-                    return None
-                parser.exit(1)
-        except AttributeError:  # it's a path string
-            continue
 
     # check SOURCE_DATE_EPOCH environment variable
     source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
