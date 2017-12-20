@@ -7,6 +7,7 @@ from distutils import log
 import os
 import sys
 import subprocess
+from io import open
 
 
 cmdclass = {}
@@ -103,12 +104,15 @@ libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
                                env=env,
                                output_dir="build/local/lib")
 
+with open("README.rst", "r", encoding="utf-8") as readme:
+    long_description = readme.read()
 
 setup(
     name="ttfautohint-py",
     version="0.1.0.dev2",
     description=("Python wrapper for ttfautohint, "
                  "a free auto-hinter for TrueType fonts"),
+    long_description=long_description,
     author="Cosimo Lupo",
     author_email="cosimo@anthrotype.com",
     url="https://github.com/fonttools/ttfautohint-py",
