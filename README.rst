@@ -1,4 +1,4 @@
-|Travis CI Status| |Appveyor CI Status| |PyPI|
+|Travis CI Status| |Appveyor CI Status| |PyPI| |Codecov|
 
 ttfautohint-py
 ~~~~~~~~~~~~~~
@@ -47,3 +47,5 @@ documentation of these libraries for more information.
    :target: https://ci.appveyor.com/project/fonttools/ttfautohint-py/
 .. |PyPI| image:: https://img.shields.io/pypi/v/ttfautohint-py.svg
    :target: https://pypi.python.org/pypi/ttfautohint-py
+.. |Codecov| image:: https://codecov.io/gh/fonttools/ttfautohint-py/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/fonttools/ttfautohint-py
