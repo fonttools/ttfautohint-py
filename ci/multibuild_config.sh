@@ -42,5 +42,6 @@ function pre_build {
 
 function run_tests {
     # The function is called from an empty temporary directory.
-    python -c "import ttfautohint"
+    cd ..
+    coverage run --parallel-mode -m pytest
 }
