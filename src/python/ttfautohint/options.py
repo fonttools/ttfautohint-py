@@ -105,14 +105,12 @@ def validate_options(kwargs):
         except AttributeError:
             with open(control_file, "rb") as f:
                 control_buffer = f.read()
-            if "control_name" not in opts:
-                opts["control_name"] = control_file
+            opts["control_name"] = control_file
         else:
-            if "control_name" not in opts:
-                try:
-                    opts["control_name"] = control_file.name
-                except AttributeError:
-                    pass
+            try:
+                opts["control_name"] = control_file.name
+            except AttributeError:
+                pass
     if control_buffer is not None:
         if not isinstance(control_buffer, bytes):
             raise TypeError("control_buffer type must be bytes, not %s"
@@ -122,6 +120,8 @@ def validate_options(kwargs):
     if "control_name" in opts:
         opts["control_name"] = ensure_text(
             opts["control_name"], encoding=sys.getfilesystemencoding())
+    else:
+        opts["control_name"] = u"<control-instructions>"
 
     reference_file = opts.pop('reference_file')
     reference_buffer = opts.pop('reference_buffer')
