@@ -6,7 +6,7 @@ env:
         # pip dependencies to _test_ your project.  Include any dependencies
         # that you need, that are also specified in BUILD_DEPENDS, this will be
         # a separate install.
-        # - TEST_DEPENDS=""
+        - TEST_DEPENDS="-r test-requirements.txt"
         - PLAT=x86_64
         - CONFIG_PATH="ci/multibuild_config.sh"
 
@@ -53,6 +53,10 @@ script:
     - install_run $PLAT
 
 after_success:
+  # upload coverage to Codecov.io
+  - pip install codecov
+  - coverage combine
+  - codecov --env TRAVIS_OS_NAME MB_PYTHON_VERSION
   # copy compiled wheels to dist/ where Travis `dpl` tool can find them and upload to PyPI
   - if [ -n "$TRAVIS_TAG" ]; then mkdir -p dist; cp wheelhouse/*.whl dist; fi
 
