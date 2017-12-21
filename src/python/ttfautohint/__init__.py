@@ -10,9 +10,9 @@ import sys
 import os
 
 from ttfautohint import memory
+from ttfautohint.options import validate_options, format_varargs
 from ttfautohint import info
 from ttfautohint import progress
-from ttfautohint.options import validate_options, format_varargs
 from ttfautohint import errors
 from ttfautohint.errors import TAError
 from ttfautohint import cli
