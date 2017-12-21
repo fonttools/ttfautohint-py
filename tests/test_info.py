@@ -9,7 +9,7 @@ from ttfautohint._compat import iterbytes
 from ttfautohint import memory
 from ttfautohint.info import (
     MutableByteString, InfoData, info_name_id_5, build_info_string,
-    name_string_is_wide, INFO_PREFIX
+    name_string_is_wide, INFO_PREFIX, insert_suffix
 )
 
 import pytest
@@ -175,3 +175,36 @@ def test_build_info_string_no_detail():
 def test_build_info_string_detailed(options, expected):
     s = build_info_string(TEST_VERSION, detailed_info=True, **options)
     assert s == TEST_INFO + expected
+
+
+@pytest.mark.parametrize(
+    "suffix, family_name, string, expected",
+    [
+        (b" Hinted", b"New Font", b"New Font", b"New Font Hinted"),
+        (b" Hinted", b"New Font", b"New Font Condensed",
+         b"New Font Hinted Condensed"),
+        (b" Hinted", b"New Font", b"FooBar",
+         b"FooBar Hinted"),
+    ],
+    ids=[
+        "is-substring",
+        "insert-after-substring",
+        "no-substring",
+    ]
+)
+def test_insert_suffix(suffix, family_name, string, expected):
+    with create_ubyte_buffer(string) as buf:
+        insert_suffix(suffix, family_name, buf)
+        new_string = buf.tobytes()
+
+    assert suffix in new_string
+    assert new_string == expected
+
+
+def test_insert_suffix_overflows():
+    s = b"\0" * 0xFFFE
+    with create_ubyte_buffer(s) as buf:
+        insert_suffix(b"-H", b"Foo Bar", buf)
+        new_string = buf.tobytes()
+
+    assert new_string == s
