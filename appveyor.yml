@@ -57,19 +57,22 @@ test_script:
   - python -m virtualenv test_env
   - test_env\Scripts\activate
   - where python
+  - pip install -r test-requirements.txt codecov
 
   # install from wheel
   - pip install --no-index --find-links dist %PACKAGE_NAME%
 
   # run tests from installed wheel
-  - python -c "import ttfautohint"
+  - coverage run -m pytest
 
 artifacts:
   # archive the generated packages in the ci.appveyor.com build report
   - path: dist\*.whl
 
-# Deploy wheels on tags to PyPI
 on_success:
+  # upload coverage data to Codecov.io
+  - codecov --env PYTHON PYTHON_VERSION PYTHON_ARCH MSYS_ARCH
+  # deploy wheels on tags to PyPI
   - ps: >-
       if($env:APPVEYOR_REPO_TAG -eq 'true') {
         Write-Output ("Deploying " + $env:APPVEYOR_REPO_TAG_NAME + " to PyPI...")
