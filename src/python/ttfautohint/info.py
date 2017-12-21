@@ -155,20 +155,24 @@ class MutableByteString(object):
         self.length_p[0] = new_len
 
 
-def info_name_id_5(platform_id, encoding_id, str_len_p, string_p, data):
-    name_string = MutableByteString(string_p, str_len_p)
+def name_string_is_wide(platform_id, encoding_id):
+    # True if the platform_id/encoding_id tuple uses UTF-16BE
+    return not (platform_id == 1 or
+            (platform_id == 3 and not (
+                encoding_id == 1 or encoding_id == 10)))
+
+
+def info_name_id_5(platform_id, encoding_id, name_string, data):
     string = name_string.tobytes()
 
-    if (platform_id == 1 or
-            (platform_id == 3 and not (
-                encoding_id == 1 or encoding_id == 10))):
-        # one-byte or multi-byte encodings
-        encoding = "ascii"
-        offset = 1
-    else:
-        # (two-byte) UTF-16BE for everything else
+    # encode our info string as ASCII for name records that use single
+    # or multi-byte encodings, or as (two-byte) UTF-16BE for everything else
+    if name_string_is_wide(platform_id, encoding_id):
         encoding = "utf-16be"
         offset = 2
+    else:
+        encoding = "ascii"
+        offset = 1
 
     info_string = data.info_string.encode(encoding)
     info_prefix = INFO_PREFIX.encode(encoding)
@@ -212,10 +216,10 @@ def _info_callback(platform_id, encoding_id, language_id, name_id, str_len_p,
 
     # if ID is a version string, append our data
     if data.info_string and name_id == 5:
+        name_string = MutableByteString(string_p, str_len_p)
         return info_name_id_5(platform_id,
                               encoding_id,
-                              str_len_p,
-                              string_p,
+                              name_string,
                               data)
 
     # if ID is related to a family name, collect the data
@@ -280,15 +284,15 @@ def _info_post_callback(info_data_p):
                     break
             else:
                 continue
-        if (plat_id == 1 or (plat_id == 3 and
-                not (enc_id == 1 or enc_id == 10))):
-            suffix = family_suffix
-            ps_suffix = family_ps_suffix
-            family_ps_name = family_name.replace(b" ", b"")
-        else:
+
+        if name_string_is_wide(plat_id, enc_id):
             suffix = family_suffix_wide
             ps_suffix = family_ps_suffix_wide
             family_ps_name = family_name.replace(b"\0 ", b"")
+        else:
+            suffix = family_suffix
+            ps_suffix = family_ps_suffix
+            family_ps_name = family_name.replace(b" ", b"")
 
         if family.name_id_1:
             insert_suffix(suffix, family_name, family.name_id_1)
