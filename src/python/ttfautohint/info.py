@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from ctypes import (
     c_int, c_ushort, c_ubyte, c_void_p, c_wchar_p, POINTER, CFUNCTYPE, cast,
     Structure, memmove, py_object,
@@ -8,6 +9,7 @@ import array
 
 from ._compat import ensure_text, iterbytes, PY3
 from . import memory
+from .options import USER_OPTIONS
 
 
 TA_Info_Func_Proto = CFUNCTYPE(
@@ -28,13 +30,15 @@ TA_Info_Post_Func_Proto = CFUNCTYPE(c_int, c_void_p)
 INFO_PREFIX = u"; ttfautohint"
 
 
-def build_info_string(version, detailed_info=True, **options):
+def build_info_string(version, detailed_info=True, control_name=None,
+                      **kwargs):
+    options = {k: kwargs.get(k, USER_OPTIONS[k]) for k in USER_OPTIONS}
     s = INFO_PREFIX + " (v%s)" % version
 
     if not detailed_info:
         return s
 
-    if options["dehint"]:
+    if options.get("dehint"):
         s += " -d"
         return s
 
@@ -42,12 +46,11 @@ def build_info_string(version, detailed_info=True, **options):
     s += " -r %d" % options["hinting_range_max"]
     s += " -G %d" % options["hinting_limit"]
     s += " -x %d" % options["increase_x_height"]
-    if options["fallback_stem_width"]:
+    if options.get("fallback_stem_width"):
         s += " -H %d" % options["fallback_stem_width"]
     s += " -D %s" % ensure_text(options["default_script"])
     s += " -f %s" % ensure_text(options["fallback_script"])
 
-    control_name = options.pop("control_name", None)
     if control_name:
         s += ' -m "%s"' % os.path.basename(
             ensure_text(control_name, sys.getfilesystemencoding()))
@@ -57,31 +60,31 @@ def build_info_string(version, detailed_info=True, **options):
         s += ' -R "%s"' % os.path.basename(
             ensure_text(reference_name, sys.getfilesystemencoding()))
 
-    if options["reference_index"]:
+    if options.get("reference_index"):
         s += " -Z %d" % options["reference_index"]
 
     strong_stem_width = ""
-    if options["gray_strong_stem_width"]:
+    if options.get("gray_strong_stem_width"):
         strong_stem_width += "g"
-    if options["gdi_cleartype_strong_stem_width"]:
+    if options.get("gdi_cleartype_strong_stem_width"):
         strong_stem_width += "G"
-    if options["dw_cleartype_strong_stem_width"]:
+    if options.get("dw_cleartype_strong_stem_width"):
         strong_stem_width += "D"
-    s += " -w %s" % strong_stem_width or '""'
+    s += " -w %s" % (strong_stem_width or '""')
 
-    if options["windows_compatibility"]:
+    if options.get("windows_compatibility"):
         s += " -W"
-    if options["adjust_subglyphs"]:
+    if options.get("adjust_subglyphs"):
         s += " -p"
-    if options["hint_composites"]:
+    if options.get("hint_composites"):
         s += " -c"
-    if options["symbol"]:
+    if options.get("symbol"):
         s += " -s"
-    if options["fallback_scaling"]:
+    if options.get("fallback_scaling"):
         s += " -S"
-    if options["TTFA_info"]:
+    if options.get("TTFA_info"):
         s += " -t"
-    x_excepts = ensure_text(options["x_height_snapping_exceptions"])
+    x_excepts = ensure_text(options.get("x_height_snapping_exceptions", ""))
     s += ' -X "%s"' % x_excepts
 
     return s
