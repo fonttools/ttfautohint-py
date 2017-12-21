@@ -246,7 +246,7 @@ def insert_suffix(suffix, family_name, name_string):
         new_string = string[:end] + suffix + string[end:]
     else:
         # it's not, we just append the suffix at the end
-        new_string = family_name + suffix
+        new_string = string + suffix
 
     try:
         name_string.frombytes(new_string)
