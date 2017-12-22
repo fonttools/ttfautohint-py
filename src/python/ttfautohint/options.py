@@ -201,6 +201,8 @@ def strong_stem_width(s):
 def stdin_or_input_path_type(s):
     # the special argument "-" means sys.stdin
     if s == "-":
+        if sys.stdin.isatty():  # ignore if interactive
+            return None
         return open(sys.stdin.fileno(), mode="rb", closefd=False)
     return s
 
@@ -208,6 +210,8 @@ def stdin_or_input_path_type(s):
 def stdout_or_output_path_type(s):
     # the special argument "-" means sys.stdout
     if s == "-":
+        if sys.stdout.isatty():  # ignore if interactive
+            return None
         return open(sys.stdout.fileno(), mode="wb", closefd=False)
     return s
 
@@ -360,20 +364,16 @@ def parse_args(args=None):
 
     try:
         options = vars(parser.parse_args(args))
-
-        # if either input/output are interactive, print help and exit
-        for io_option in ("in_file", "out_file"):
-            try:
-                if options[io_option].isatty():
-                    parser.print_help()
-                    parser.exit(1)
-            except AttributeError:  # it's a path string
-                continue
-
     except SystemExit:
         if capture_sys_exit:
             return None
         raise
+
+    # if either input/output are interactive, print help and exit
+    if (not capture_sys_exit and
+            (options["in_file"] is None or options["out_file"] is None)):
+        parser.print_help()
+        parser.exit(1)
 
     # check SOURCE_DATE_EPOCH environment variable
     source_date_epoch = os.environ.get("SOURCE_DATE_EPOCH")
