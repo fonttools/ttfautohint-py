@@ -74,33 +74,27 @@ class TestValidateOptions(object):
 
     def test_control_file_to_control_buffer(self, tmpdir):
         control_file = tmpdir / "ta_ctrl.txt"
-        data = b"abcd"
-        control_file.write_binary(data)
-        control_file.name = str(control_file)
+        data = u"abcd"
+        control_file.write_text(data, encoding="utf-8")
 
-        # 'control_file' is a file-like object
-        kwargs = {'in_buffer': b"\0",
-                  'control_file': control_file.open(mode="rb")}
-        options = validate_options(kwargs)
-        assert options["control_buffer"] == data
+        # 'control_file' is a file-like object opened in text mode
+        with control_file.open(mode="rt", encoding="utf-8") as f:
+            kwargs = {'in_buffer': b"\0", 'control_file': f}
+            options = validate_options(kwargs)
+        assert options["control_buffer"] == data.encode("utf-8")
         assert "control_file" not in options
         assert options["control_buffer_len"] == len(data)
-        assert options["control_name"] == control_file.name
+        assert options["control_name"] == str(control_file)
 
         # 'control_file' is a path string
-        kwargs = {'in_buffer': b"\0", 'control_file': control_file.name}
+        kwargs = {'in_buffer': b"\0", 'control_file': str(control_file)}
         options = validate_options(kwargs)
-        assert options["control_buffer"] == data
+        assert options["control_buffer"] == data.encode("utf-8")
         assert "control_file" not in options
         assert options["control_buffer_len"] == len(data)
-        assert options["control_name"] == control_file.name
+        assert options["control_name"] == str(control_file)
 
     def test_control_buffer_name(self, tmpdir):
         kwargs = {"in_buffer": b"\0", "control_buffer": b"abcd"}
         options = validate_options(kwargs)
         assert options["control_name"] == u"<control-instructions>"
-
-    def test_control_buffer_is_bytes(self, tmpdir):
-        with pytest.raises(TypeError,
-                           match="control_buffer type must be bytes"):
-            validate_options({"in_buffer": b"\0", "control_buffer": u""})

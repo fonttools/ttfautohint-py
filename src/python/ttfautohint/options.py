@@ -103,7 +103,7 @@ def validate_options(kwargs):
         try:
             control_buffer = control_file.read()
         except AttributeError:
-            with open(control_file, "rb") as f:
+            with open(control_file, "rt", encoding="utf-8") as f:
                 control_buffer = f.read()
             opts["control_name"] = control_file
         else:
@@ -112,10 +112,7 @@ def validate_options(kwargs):
             except AttributeError:
                 pass
     if control_buffer is not None:
-        if not isinstance(control_buffer, bytes):
-            raise TypeError("control_buffer type must be bytes, not %s"
-                            % type(control_buffer).__name__)
-        opts['control_buffer'] = control_buffer
+        opts['control_buffer'] = ensure_binary(control_buffer, "utf-8")
         opts['control_buffer_len'] = len(control_buffer)
     if "control_name" in opts:
         opts["control_name"] = ensure_text(
