@@ -1,6 +1,8 @@
 import sys
 from io import StringIO, BytesIO
 import argparse
+import os
+import logging
 import pytest
 
 from ctypes import c_ulonglong
@@ -8,7 +10,7 @@ from ctypes import c_ulonglong
 from ttfautohint._compat import ensure_binary, text_type
 from ttfautohint.options import (
     validate_options, format_varargs, strong_stem_width,
-    stdin_or_input_path_type, stdout_or_output_path_type,
+    stdin_or_input_path_type, stdout_or_output_path_type, parse_args,
 )
 
 
@@ -402,3 +404,75 @@ def test_path_output_type(tmpdir):
     s = str(tmp)
     path = stdout_or_output_path_type(s)
     assert path == s
+
+
+class TestParseArgs(object):
+
+    argv0 = "python -m ttfautohint"
+
+    def test_unrecognized_arguments(self, monkeypatch, capsys):
+        monkeypatch.setattr(argparse._sys, "argv", [self.argv0, "--foo"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+
+        assert str(exc_info.value) == "2"
+        assert "unrecognized arguments: --foo" in capsys.readouterr()[1]
+
+        monkeypatch.undo()
+
+        assert parse_args("--bar") is None
+        assert "unrecognized arguments: --bar" in capsys.readouterr()[1]
+
+        assert parse_args(["--baz"]) is None
+        assert "unrecognized arguments: --baz" in capsys.readouterr()[1]
+
+    def test_no_in_file(self, monkeypatch, capsys):
+        monkeypatch.setattr(argparse._sys, "argv", [self.argv0])
+
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+
+        assert str(exc_info.value) == "1"
+
+        out, err = capsys.readouterr()
+        assert "usage: ttfautohint" in out
+        assert not err
+
+    def test_no_out_file(self, monkeypatch, capsys):
+        monkeypatch.setattr(argparse._sys, "argv", [self.argv0, "font.ttf"])
+
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+
+        assert str(exc_info.value) == "1"
+
+        out, err = capsys.readouterr()
+        assert "usage: ttfautohint" in out
+        assert not err
+
+    def test_source_date_epoch(self, monkeypatch):
+        epoch = "1513966552"
+        env = dict(os.environ)
+        env["SOURCE_DATE_EPOCH"] = epoch
+        monkeypatch.setattr(os, "environ", env)
+
+        options = parse_args([])
+
+        assert options["epoch"] == int(epoch)
+
+    def test_source_date_epoch_invalid(self, monkeypatch, caplog):
+        invalid_epoch = "foobar"
+        env = dict(os.environ)
+        env["SOURCE_DATE_EPOCH"] = invalid_epoch
+        monkeypatch.setattr(os, "environ", env)
+
+        with caplog.at_level(logging.WARNING):
+            options = parse_args([])
+
+        assert "epoch" not in options
+        assert "invalid SOURCE_DATE_EPOCH: 'foobar'" in caplog.text
+
+    def test_show_ttfa_info_unsupported(self):
+        with pytest.raises(NotImplementedError):
+            parse_args("-T")
