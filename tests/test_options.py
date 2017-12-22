@@ -5,7 +5,7 @@ import pytest
 from ctypes import c_ulonglong
 
 from ttfautohint._compat import ensure_binary, text_type
-from ttfautohint.options import validate_options
+from ttfautohint.options import validate_options, format_varargs
 
 
 class TestValidateOptions(object):
@@ -182,3 +182,90 @@ class TestValidateOptions(object):
                                     "family_suffix": b"-TA"})
         assert isinstance(options["family_suffix"], text_type)
         assert options["family_suffix"] == u"-TA"
+
+
+@pytest.mark.parametrize(
+    "options, expected",
+    [
+        (
+            {},
+            (b"", ())
+        ),
+        (
+            {
+                "in_buffer": b"\0\1\0\0",
+                "in_buffer_len": 4,
+                "out_buffer": None,
+                "out_buffer_len": None,
+                "error_string": None,
+                "alloc_func": None,
+                "free_func": None,
+                "info_callback": None,
+                "info_post_callback": None,
+                "progress_callback": None,
+                "progress_callback_data": None,
+                "error_callback": None,
+                "error_callback_data": None,
+                "control_buffer": b"abcd",
+                "control_buffer_len": 4,
+                "reference_buffer": b"\0\1\0\0",
+                "reference_buffer_len": 4,
+                "reference_index": 1,
+                "reference_name": b"/path/to/font.ttf",
+                "hinting_range_min": 8,
+                "hinting_range_max": 50,
+                "hinting_limit": 200,
+                "hint_composites": False,
+                "adjust_subglyphs": False,
+                "increase_x_height": 14,
+                "x_height_snapping_exceptions": b"6,15-18",
+                "windows_compatibility": True,
+                "default_script": b"grek",
+                "fallback_script": b"latn",
+                "fallback_scaling": False,
+                "symbol": True,
+                "fallback_stem_width": 100,
+                "ignore_restrictions": True,
+                "family_suffix": b"-Hinted",
+                "detailed_info": True,
+                "no_info": False,
+                "TTFA_info": True,
+                "dehint": False,
+                "epoch": 1513955869,
+                "debug": False,
+                "verbose": True,
+            },
+            ((b"TTFA-info, adjust-subglyphs, control-buffer, "
+              b"control-buffer-len, debug, default-script, dehint, "
+              b"detailed-info, epoch, fallback-scaling, fallback-script, "
+              b"fallback-stem-width, family-suffix, hint-composites, "
+              b"hinting-limit, hinting-range-max, hinting-range-min, "
+              b"ignore-restrictions, in-buffer, in-buffer-len, "
+              b"increase-x-height, no-info, reference-buffer, "
+              b"reference-buffer-len, reference-index, reference-name, "
+              b"symbol, verbose, windows-compatibility, "
+              b"x-height-snapping-exceptions"),
+             (True, False, b'abcd',
+              4, False, b'grek', False,
+              True, 1513955869, False, b'latn',
+              100, b'-Hinted', False,
+              200, 50, 8,
+              True, b'\x00\x01\x00\x00', 4,
+              14, False, b'\x00\x01\x00\x00',
+              4, 1, b'/path/to/font.ttf',
+              True, True, True,
+              b'6,15-18'))
+        ),
+        (
+            {"unkown_option": 1},
+            (b"", ())
+        )
+    ],
+    ids=[
+        "empty",
+        "full-options",
+        "unknown-option",
+    ]
+)
+def test_format_varargs(options, expected):
+    assert format_varargs(**options) == expected
