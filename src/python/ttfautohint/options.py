@@ -151,8 +151,7 @@ def validate_options(kwargs):
 
     for key in ('default_script', 'fallback_script',
                 'x_height_snapping_exceptions'):
-        if opts[key] is not None:
-            opts[key] = ensure_binary(opts[key])
+        opts[key] = ensure_binary(opts[key])
 
     if opts['epoch'] is not None:
         from ctypes import c_ulonglong
