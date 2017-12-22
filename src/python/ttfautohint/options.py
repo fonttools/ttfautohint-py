@@ -65,6 +65,9 @@ PRIVATE_OPTIONS = frozenset([
 
 ALL_OPTIONS = frozenset(USER_OPTIONS) | PRIVATE_OPTIONS
 
+# used when the control file does not have a name on the filesystem
+CONTROL_NAME_FALLBACK = u"<control-instructions>"
+
 
 def validate_options(kwargs):
     opts = {k: kwargs.pop(k, USER_OPTIONS[k]) for k in USER_OPTIONS}
@@ -118,7 +121,7 @@ def validate_options(kwargs):
         opts["control_name"] = ensure_text(
             opts["control_name"], encoding=sys.getfilesystemencoding())
     else:
-        opts["control_name"] = u"<control-instructions>"
+        opts["control_name"] = CONTROL_NAME_FALLBACK
 
     reference_file = opts.pop('reference_file')
     reference_buffer = opts.pop('reference_buffer')

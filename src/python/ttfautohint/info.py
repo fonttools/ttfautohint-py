@@ -9,7 +9,7 @@ import array
 
 from ._compat import ensure_text, iterbytes, PY3
 from . import memory
-from .options import USER_OPTIONS
+from .options import USER_OPTIONS, CONTROL_NAME_FALLBACK
 
 
 TA_Info_Func_Proto = CFUNCTYPE(
@@ -51,7 +51,7 @@ def build_info_string(version, detailed_info=True, control_name=None,
     s += " -D %s" % ensure_text(options["default_script"])
     s += " -f %s" % ensure_text(options["fallback_script"])
 
-    if control_name:
+    if control_name and control_name != CONTROL_NAME_FALLBACK:
         s += ' -m "%s"' % os.path.basename(
             ensure_text(control_name, sys.getfilesystemencoding()))
 
