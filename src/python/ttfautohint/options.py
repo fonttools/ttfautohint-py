@@ -197,18 +197,28 @@ def strong_stem_width(s):
 def stdin_or_input_path_type(s):
     # the special argument "-" means sys.stdin
     if s == "-":
-        if sys.stdin.isatty():  # ignore if interactive
+        try:
+            if sys.stdin.isatty():  # ignore if interactive
+                return None
+            return open(sys.stdin.fileno(), mode="rb", closefd=False)
+        except (AttributeError, IOError):
+            # if stdout was redirected (e.g. inside pytest), fileno may raise
+            # io.UnsupportedOperation
             return None
-        return open(sys.stdin.fileno(), mode="rb", closefd=False)
     return s
 
 
 def stdout_or_output_path_type(s):
     # the special argument "-" means sys.stdout
     if s == "-":
-        if sys.stdout.isatty():  # ignore if interactive
+        try:
+            if sys.stdout.isatty():  # ignore if interactive
+                return None
+            return open(sys.stdout.fileno(), mode="wb", closefd=False)
+        except (AttributeError, IOError):
+            # if stdout was redirected (e.g. inside pytest), fileno may raise
+            # io.UnsupportedOperation
             return None
-        return open(sys.stdout.fileno(), mode="wb", closefd=False)
     return s
 
 
