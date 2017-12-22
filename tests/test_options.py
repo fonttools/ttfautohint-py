@@ -1,11 +1,15 @@
 import sys
 from io import StringIO, BytesIO
+import argparse
 import pytest
 
 from ctypes import c_ulonglong
 
 from ttfautohint._compat import ensure_binary, text_type
-from ttfautohint.options import validate_options, format_varargs
+from ttfautohint.options import (
+    validate_options, format_varargs, strong_stem_width,
+    stdin_or_input_path_type, stdout_or_output_path_type,
+)
 
 
 class TestValidateOptions(object):
@@ -269,3 +273,132 @@ class TestValidateOptions(object):
 )
 def test_format_varargs(options, expected):
     assert format_varargs(**options) == expected
+
+
+@pytest.mark.parametrize(
+    "string, expected",
+    [
+        (
+            "",
+            {
+                "gray_strong_stem_width": False,
+                "gdi_cleartype_strong_stem_width": False,
+                "dw_cleartype_strong_stem_width": False
+            }
+        ),
+        (
+            "g",
+            {
+                "gray_strong_stem_width": True,
+                "gdi_cleartype_strong_stem_width": False,
+                "dw_cleartype_strong_stem_width": False
+            }
+        ),
+        (
+            "G",
+            {
+                "gray_strong_stem_width": False,
+                "gdi_cleartype_strong_stem_width": True,
+                "dw_cleartype_strong_stem_width": False
+            }
+        ),
+        (
+            "D",
+            {
+                "gray_strong_stem_width": False,
+                "gdi_cleartype_strong_stem_width": False,
+                "dw_cleartype_strong_stem_width": True
+            }
+        ),
+        (
+            "DGg",
+            {
+                "gray_strong_stem_width": True,
+                "gdi_cleartype_strong_stem_width": True,
+                "dw_cleartype_strong_stem_width": True
+            }
+        ),
+    ],
+    ids=[
+        "empty-string",
+        "only-gray",
+        "only-gdi",
+        "only-dw",
+        "all"
+    ]
+)
+def test_strong_stem_width(string, expected):
+    assert strong_stem_width(string) == expected
+
+
+def test_strong_stem_width_invalid():
+    with pytest.raises(argparse.ArgumentTypeError,
+                       match="string can only contain up to 3 letters"):
+        strong_stem_width("GGGG")
+
+    with pytest.raises(argparse.ArgumentTypeError,
+                       match="invalid value: 'a'"):
+        strong_stem_width("a")
+
+
+@pytest.fixture(
+    params=[True, False],
+    ids=['tty', 'pipe'],
+)
+def isatty(request):
+    return request.param
+
+
+class MockFile(object):
+
+    def __init__(self, f, isatty):
+        self._file = f
+        self._isatty = isatty
+
+    def isatty(self):
+        return self._isatty
+
+    def __getattr__(self, attr):
+        return getattr(self._file, attr)
+
+
+def test_stdin_input_type(monkeypatch, tmpdir, isatty):
+    tmp = (tmpdir / "stdin").ensure().open("r")
+    monkeypatch.setattr(sys, "stdin", MockFile(tmp, isatty))
+
+    f = stdin_or_input_path_type("-")
+
+    if isatty:
+        assert f is None
+    else:
+        assert hasattr(f, "read")
+        assert f.mode == "rb"
+        assert f.closed is False
+
+
+def test_path_input_type(tmpdir):
+    tmp = tmpdir / "font.ttf"
+    s = str(tmp)
+    path = stdin_or_input_path_type(s)
+    assert path == s
+
+
+def test_stdout_output_type(monkeypatch, tmpdir, isatty):
+    tmp = (tmpdir / "stdout").open("w")
+    monkeypatch.setattr(sys, "stdout", MockFile(tmp, isatty))
+
+    f = stdout_or_output_path_type("-")
+
+    if isatty:
+        assert f is None
+    else:
+        assert hasattr(f, "write")
+        assert f.mode == "wb"
+        assert f.closed is False
+
+
+def test_path_output_type(tmpdir):
+    tmp = tmpdir / "font.ttf"
+    s = str(tmp)
+    path = stdout_or_output_path_type(s)
+    assert path == s
