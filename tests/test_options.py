@@ -1,5 +1,10 @@
+import sys
+from io import StringIO, BytesIO
 import pytest
 
+from ctypes import c_ulonglong
+
+from ttfautohint._compat import ensure_binary, text_type
 from ttfautohint.options import validate_options
 
 
@@ -77,7 +82,7 @@ class TestValidateOptions(object):
         data = u"abcd"
         control_file.write_text(data, encoding="utf-8")
 
-        # 'control_file' is a file-like object opened in text mode
+        # 'control_file' is a file object opened in text mode
         with control_file.open(mode="rt", encoding="utf-8") as f:
             kwargs = {'in_buffer': b"\0", 'control_file': f}
             options = validate_options(kwargs)
@@ -94,7 +99,86 @@ class TestValidateOptions(object):
         assert options["control_buffer_len"] == len(data)
         assert options["control_name"] == str(control_file)
 
+        # 'control_file' is a file-like stream
+        kwargs = {'in_buffer': b"\0", 'control_file': StringIO(data)}
+        options = validate_options(kwargs)
+        assert options["control_buffer"] == data.encode("utf-8")
+        assert "control_file" not in options
+        assert options["control_buffer_len"] == len(data)
+        # the stream doesn't have a 'name' attribute; using fallback
+        assert options["control_name"] == u"<control-instructions>"
+
     def test_control_buffer_name(self, tmpdir):
         kwargs = {"in_buffer": b"\0", "control_buffer": b"abcd"}
         options = validate_options(kwargs)
         assert options["control_name"] == u"<control-instructions>"
+
+    def test_reference_file_to_reference_buffer(self, tmpdir):
+        reference_file = tmpdir / "font.ttf"
+        data = b"\0\1\0\0"
+        reference_file.write_binary(data)
+        encoded_filename = ensure_binary(
+            str(reference_file), encoding=sys.getfilesystemencoding())
+
+        # 'reference_file' is a file object opened in binary mode
+        with reference_file.open(mode="rb") as f:
+            kwargs = {'in_buffer': b"\0", 'reference_file': f}
+            options = validate_options(kwargs)
+        assert options["reference_buffer"] == data
+        assert "reference_file" not in options
+        assert options["reference_buffer_len"] == len(data)
+        assert options["reference_name"] == encoded_filename
+
+        # 'reference_file' is a path string
+        kwargs = {'in_buffer': b"\0", 'reference_file': str(reference_file)}
+        options = validate_options(kwargs)
+        assert options["reference_buffer"] == data
+        assert "reference_file" not in options
+        assert options["reference_buffer_len"] == len(data)
+        assert options["reference_name"] == encoded_filename
+
+        # 'reference_file' is a file-like stream
+        kwargs = {'in_buffer': b"\0", 'reference_file': BytesIO(data)}
+        options = validate_options(kwargs)
+        assert options["reference_buffer"] == data
+        assert "reference_file" not in options
+        assert options["reference_buffer_len"] == len(data)
+        # the stream doesn't have a 'name' attribute, no reference_name
+        assert options["reference_name"] is None
+
+    def test_custom_reference_name(self, tmpdir):
+        reference_file = tmpdir / "font.ttf"
+        data = b"\0\1\0\0"
+        reference_file.write_binary(data)
+        expected = u"Some Font".encode(sys.getfilesystemencoding())
+
+        with reference_file.open(mode="rb") as f:
+            kwargs = {'in_buffer': b"\0",
+                      'reference_file': f,
+                      'reference_name': u"Some Font"}
+            options = validate_options(kwargs)
+
+        assert options["reference_name"] == expected
+
+        kwargs = {'in_buffer': b"\0",
+                  'reference_file': str(reference_file),
+                  'reference_name': u"Some Font"}
+        options = validate_options(kwargs)
+
+        assert options["reference_name"] == expected
+
+    def test_reference_buffer_is_bytes(self, tmpdir):
+        with pytest.raises(TypeError,
+                           match="reference_buffer type must be bytes"):
+            validate_options({"in_buffer": b"\0", "reference_buffer": u""})
+
+    def test_epoch(self):
+        options = validate_options({"in_buffer": b"\0", "epoch": 0})
+        assert isinstance(options["epoch"], c_ulonglong)
+        assert options["epoch"].value == 0
+
+    def test_family_suffix(self):
+        options = validate_options({"in_buffer": b"\0",
+                                    "family_suffix": b"-TA"})
+        assert isinstance(options["family_suffix"], text_type)
+        assert options["family_suffix"] == u"-TA"
