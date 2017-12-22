@@ -9,6 +9,7 @@ from io import open
 import sys
 import os
 
+from ttfautohint._version import __version__
 from ttfautohint import memory
 from ttfautohint.options import validate_options, format_varargs
 from ttfautohint import info
@@ -17,8 +18,6 @@ from ttfautohint import errors
 from ttfautohint.errors import TAError
 from ttfautohint import cli
 
-
-__version__ = "0.1.2.dev0"
 
 __all__ = ["ttfautohint", "TAError"]
 

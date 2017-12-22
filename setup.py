@@ -109,7 +109,7 @@ with open("README.rst", "r", encoding="utf-8") as readme:
 
 setup(
     name="ttfautohint-py",
-    version="0.1.2.dev0",
+    use_scm_version=True,
     description=("Python wrapper for ttfautohint, "
                  "a free auto-hinter for TrueType fonts"),
     long_description=long_description,
@@ -123,6 +123,7 @@ setup(
     ext_modules=[libttfautohint],
     zip_safe=False,
     cmdclass=cmdclass,
+    setup_requires=['setuptools_scm'],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
