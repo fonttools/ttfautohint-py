@@ -77,3 +77,28 @@ else:
 
             return io.open(
                 file, mode, buffering, encoding, errors, newline, closefd)
+
+
+try:
+    from enum import IntEnum
+except ImportError:
+    from collections import OrderedDict, namedtuple
+
+    # make do without the real Enum type, python3 only... :(
+    def IntEnum(typename, field_names, start=1):
+
+        @property
+        def __members__(self):
+            return OrderedDict([(k, getattr(self, k))
+                                for k in self._fields])
+
+        def __call__(self, value):
+            if value not in self:
+                raise ValueError("%s is not a valid %s" % (value, typename))
+            return value
+
+        base = namedtuple(typename, field_names)
+        attributes = {"__members__": __members__,
+                      "__call__": __call__}
+        klass = type(typename, (base,), attributes)
+        return klass._make(range(start, len(field_names) + start))

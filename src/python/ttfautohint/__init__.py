@@ -11,7 +11,7 @@ import os
 
 from ttfautohint._version import __version__
 from ttfautohint import memory
-from ttfautohint.options import validate_options, format_varargs
+from ttfautohint.options import validate_options, format_varargs, StemWidthMode
 from ttfautohint import info
 from ttfautohint import progress
 from ttfautohint import errors
@@ -19,7 +19,7 @@ from ttfautohint.errors import TAError
 from ttfautohint import cli
 
 
-__all__ = ["ttfautohint", "TAError"]
+__all__ = ["ttfautohint", "TAError", "StemWidthMode"]
 
 
 class TALibrary(object):
