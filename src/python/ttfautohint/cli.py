@@ -37,13 +37,6 @@ if IN-FILE is missing also, standard input and output are used.
 The new hints are based on FreeType's auto-hinter.
 
 This program is a simple front-end to the `ttfautohint' library.
-
-Long options can be given with one or two dashes,
-and with and without equal sign between option and argument.
-This means that the following forms are acceptable:
-`-foo=bar', `--foo=bar', `-foo bar', `--foo bar'.
-
-Mandatory arguments to long options are mandatory for short options too.
 """
 
 EPILOG = """\
@@ -167,8 +160,6 @@ Empty lines are ignored, too.
 Key letters `l', `r', `n', `p', `t', `w', `x', and `y'
 have the verbose aliases `left', `right', `nodir', `point', `touch',
 `width', `xshift', and `yshift', respectively.
-
-A GUI version of this program is called `ttfautohintGUI'.
 
 Report bugs to: freetype-devel@nongnu.org
 
