@@ -11,7 +11,7 @@ from ttfautohint._compat import ensure_binary, text_type
 from ttfautohint.options import (
     validate_options, format_varargs, strong_stem_width,
     stdin_or_input_path_type, stdout_or_output_path_type, parse_args,
-    stem_width_mode,
+    stem_width_mode, StemWidthMode
 )
 
 
@@ -350,33 +350,33 @@ def test_strong_stem_width_invalid():
         (
             "nnn",
             {
-                "gray_stem_width_mode": -1,
-                "gdi_stem_width_mode": -1,
-                "dw_stem_width_mode": -1
+                "gray_stem_width_mode": StemWidthMode.NATURAL,
+                "gdi_stem_width_mode": StemWidthMode.NATURAL,
+                "dw_stem_width_mode": StemWidthMode.NATURAL
             }
         ),
         (
             "qqq",
             {
-                "gray_stem_width_mode": 0,
-                "gdi_stem_width_mode": 0,
-                "dw_stem_width_mode": 0
+                "gray_stem_width_mode": StemWidthMode.QUANTIZED,
+                "gdi_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_stem_width_mode": StemWidthMode.QUANTIZED
             }
         ),
         (
             "sss",
             {
-                "gray_stem_width_mode": 1,
-                "gdi_stem_width_mode": 1,
-                "dw_stem_width_mode": 1
+                "gray_stem_width_mode": StemWidthMode.STRONG,
+                "gdi_stem_width_mode": StemWidthMode.STRONG,
+                "dw_stem_width_mode": StemWidthMode.STRONG
             }
         ),
         (
             "nqs",
             {
-                "gray_stem_width_mode": -1,
-                "gdi_stem_width_mode": 0,
-                "dw_stem_width_mode": 1
+                "gray_stem_width_mode": StemWidthMode.NATURAL,
+                "gdi_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_stem_width_mode": StemWidthMode.STRONG
             }
         ),
     ],
