@@ -1,6 +1,6 @@
 import sys
 import os
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from ttfautohint._compat import ensure_binary, ensure_text, basestring, open
 
 
@@ -38,18 +38,34 @@ USER_OPTIONS = dict(
     verbose=False,
 )
 
+try:
+    from enum import IntEnum
+except ImportError:
+    # make do without the real Enum type, python3 only... :(
+    def IntEnum(typename, field_names, start=1):
+        @property
+        def __members__(self):
+            return OrderedDict([(k, getattr(self, k))
+                                for k in self._fields])
+        base = namedtuple(typename, field_names)
+        klass = type(typename, (base,), {"__members__": __members__})
+        return klass._make(range(start, len(field_names) + start))
 
-class TAStemWidthMode(object):
-    NATURAL = -1
-    QUANTIZED = 0
-    STRONG = 1
+
+StemWidthMode = IntEnum("StemWidthMode",
+                        [
+                            "NATURAL",    # -1
+                            "QUANTIZED",  # 0
+                            "STRONG",     # 1
+                        ],
+                        start=-1)
 
 
-STEM_WIDTH_MODE_OPTIONS = OrderedDict(
-    gray_stem_width_mode=TAStemWidthMode.QUANTIZED,
-    gdi_stem_width_mode=TAStemWidthMode.STRONG,
-    dw_stem_width_mode=TAStemWidthMode.QUANTIZED,
-)
+STEM_WIDTH_MODE_OPTIONS = OrderedDict([
+    ("gray_stem_width_mode", StemWidthMode.QUANTIZED),
+    ("gdi_stem_width_mode", StemWidthMode.STRONG),
+    ("dw_stem_width_mode", StemWidthMode.QUANTIZED),
+])
 
 # Deprecated; use stem width mode options
 STRONG_STEM_WIDTH_OPTIONS = dict(
@@ -217,20 +233,18 @@ def stem_width_mode(s):
         import argparse
         raise argparse.ArgumentTypeError(
             "Stem width mode string must consist of exactly three letters")
-    modes = {
-        "n": TAStemWidthMode.NATURAL,
-        "q": TAStemWidthMode.QUANTIZED,
-        "s": TAStemWidthMode.STRONG}
-    letters = sorted(repr(m) for m in modes)
+    modes = {k[0].lower(): v
+             for k, v in StemWidthMode.__members__.items()}
     result = {}
-    for i, mode in enumerate(STEM_WIDTH_MODE_OPTIONS):
+    for i, option in enumerate(STEM_WIDTH_MODE_OPTIONS):
         m = s[i]
         if m not in modes:
             import argparse
+            letters = sorted(repr(k) for k in modes)
             raise argparse.ArgumentTypeError(
                 "Stem width mode letter for %s must be %s, or %s"
-                % (mode, ", ".join(letters[:-1]), letters[-1]))
-        result[mode] = modes[m]
+                % (option, ", ".join(letters[:-1]), letters[-1]))
+        result[option] = modes[m]
     return result
 
 
