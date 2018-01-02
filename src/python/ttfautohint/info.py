@@ -9,7 +9,10 @@ import array
 
 from ._compat import ensure_text, iterbytes, PY3
 from . import memory
-from .options import USER_OPTIONS, CONTROL_NAME_FALLBACK
+from .options import (
+    USER_OPTIONS, CONTROL_NAME_FALLBACK, StemWidthMode,
+    STEM_WIDTH_MODE_OPTIONS,
+)
 
 
 TA_Info_Func_Proto = CFUNCTYPE(
@@ -28,6 +31,10 @@ TA_Info_Post_Func_Proto = CFUNCTYPE(c_int, c_void_p)
 
 
 INFO_PREFIX = u"; ttfautohint"
+
+# map StemWidthMode values to lowercased initials of enum members
+_mode_letters = {v: k[0].lower()
+                 for k, v in StemWidthMode.__members__.items()}
 
 
 def build_info_string(version, detailed_info=True, control_name=None,
@@ -63,14 +70,11 @@ def build_info_string(version, detailed_info=True, control_name=None,
     if options.get("reference_index"):
         s += " -Z %d" % options["reference_index"]
 
-    strong_stem_width = ""
-    if options.get("gray_strong_stem_width"):
-        strong_stem_width += "g"
-    if options.get("gdi_cleartype_strong_stem_width"):
-        strong_stem_width += "G"
-    if options.get("dw_cleartype_strong_stem_width"):
-        strong_stem_width += "D"
-    s += " -w %s" % (strong_stem_width or '""')
+    stem_width_modes = []
+    for mode_option in STEM_WIDTH_MODE_OPTIONS:
+        mode_value = options[mode_option]
+        stem_width_modes.append(_mode_letters[mode_value])
+    s += " -a %s" % "".join(stem_width_modes)
 
     if options.get("windows_compatibility"):
         s += " -W"
