@@ -284,41 +284,41 @@ def test_format_varargs(options, expected):
         (
             "",
             {
-                "gray_strong_stem_width": False,
-                "gdi_cleartype_strong_stem_width": False,
-                "dw_cleartype_strong_stem_width": False
+                "gray_stem_width_mode": StemWidthMode.QUANTIZED,
+                "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
             }
         ),
         (
             "g",
             {
-                "gray_strong_stem_width": True,
-                "gdi_cleartype_strong_stem_width": False,
-                "dw_cleartype_strong_stem_width": False
+                "gray_stem_width_mode": StemWidthMode.STRONG,
+                "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
             }
         ),
         (
             "G",
             {
-                "gray_strong_stem_width": False,
-                "gdi_cleartype_strong_stem_width": True,
-                "dw_cleartype_strong_stem_width": False
+                "gray_stem_width_mode": StemWidthMode.QUANTIZED,
+                "gdi_cleartype_stem_width_mode": StemWidthMode.STRONG,
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
             }
         ),
         (
             "D",
             {
-                "gray_strong_stem_width": False,
-                "gdi_cleartype_strong_stem_width": False,
-                "dw_cleartype_strong_stem_width": True
+                "gray_stem_width_mode": StemWidthMode.QUANTIZED,
+                "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
             }
         ),
         (
             "DGg",
             {
-                "gray_strong_stem_width": True,
-                "gdi_cleartype_strong_stem_width": True,
-                "dw_cleartype_strong_stem_width": True
+                "gray_stem_width_mode": StemWidthMode.STRONG,
+                "gdi_cleartype_stem_width_mode": StemWidthMode.STRONG,
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
             }
         ),
     ],
@@ -514,17 +514,17 @@ class TestParseArgs(object):
 
         assert options["epoch"] == int(epoch)
 
-    def test_source_date_epoch_invalid(self, monkeypatch, caplog):
+    def test_source_date_epoch_invalid(self, monkeypatch):
         invalid_epoch = "foobar"
         env = dict(os.environ)
         env["SOURCE_DATE_EPOCH"] = invalid_epoch
         monkeypatch.setattr(os, "environ", env)
 
-        with caplog.at_level(logging.WARNING):
+        with pytest.warns(UserWarning,
+                          match="invalid SOURCE_DATE_EPOCH: 'foobar'"):
             options = parse_args([])
 
         assert "epoch" not in options
-        assert "invalid SOURCE_DATE_EPOCH: 'foobar'" in caplog.text
 
     def test_show_ttfa_info_unsupported(self):
         with pytest.raises(NotImplementedError):

@@ -202,9 +202,9 @@ def strong_stem_width(s):
         raise argparse.ArgumentTypeError(
             "string can only contain up to 3 letters")
     valid = {
-        "g": "gray_strong_stem_width",
-        "G": "gdi_cleartype_strong_stem_width",
-        "D": "dw_cleartype_strong_stem_width"}
+        "g": "gray_stem_width_mode",
+        "G": "gdi_cleartype_stem_width_mode",
+        "D": "dw_cleartype_stem_width_mode"}
     chars = set(s)
     invalid = chars - set(valid)
     if invalid:
@@ -214,7 +214,9 @@ def strong_stem_width(s):
                 repr(v) for v in sorted(invalid)))
     result = {}
     for char, opt_name in valid.items():
-        result[opt_name] = char in chars
+        is_strong = char in chars
+        result[opt_name] = (StemWidthMode.STRONG if is_strong
+                            else StemWidthMode.QUANTIZED)
     return result
 
 
@@ -313,13 +315,19 @@ def parse_args(args=None):
         help="output file (default: standard output)")
     parser.add_argument(
         "--debug", action="store_true", help="print debugging information")
-    parser.add_argument(
+
+    stem_width_group = parser.add_mutually_exclusive_group(required=False)
+    stem_width_group.add_argument(
         "-a", "--stem-width-mode", type=stem_width_mode, metavar="S",
         default=STEM_WIDTH_MODE_OPTIONS,
         help=("select stem width mode for grayscale, GDI ClearType, and DW "
               "ClearType, where S is a string of three letters with possible "
               "values 'n' for natural, 'q' for quantized, and 's' for strong "
               "(default: qsq)"))
+    stem_width_group.add_argument(  # deprecated
+        "-w", "--strong-stem-width", type=strong_stem_width, metavar="S",
+        help=argparse.SUPPRESS)
+
     parser.add_argument(
         "-c", "--composites", dest="hint_composites", action="store_true",
         help="hint glyph composites also")
@@ -394,13 +402,6 @@ def parse_args(args=None):
         version=version_string,
         help="print version information and exit")
     parser.add_argument(
-        "-w", "--strong-stem-width", type=strong_stem_width, metavar="S",
-        default=STRONG_STEM_WIDTH_OPTIONS,
-        help=("use strong stem width routine for modes S, where S is a "
-              "string of up to three letters with possible values `g' for "
-              "grayscale, `G' for GDI ClearType, and `D' for DirectWrite "
-              "ClearType (default: G)"))
-    parser.add_argument(
         "-W", "--windows-compatibility", action="store_true",
         help=("add blue zones for `usWinAscent' and `usWinDescent' to avoid "
               "clipping"))
@@ -438,15 +439,21 @@ def parse_args(args=None):
         try:
             options["epoch"] = int(source_date_epoch)
         except ValueError:
-            import logging
-            log = logging.getLogger("ttfautohint")
-            log.warning("invalid SOURCE_DATE_EPOCH: %r", source_date_epoch)
+            import warnings
+            warnings.warn(
+                UserWarning("invalid SOURCE_DATE_EPOCH: %r" % source_date_epoch))
 
     if options.pop("show_TTFA_info"):
         # TODO use fonttools to dump TTFA table?
         raise NotImplementedError()
 
-    stem_width_options = options.pop("strong_stem_width")
+    stem_width_options = options.pop("stem_width_mode")
+    strong_stem_width_options = options.pop("strong_stem_width")
+    if strong_stem_width_options:
+        import warnings
+        warnings.warn(
+            UserWarning("Option '-w' is deprecated! Use option '-a' instead"))
+        stem_width_options = strong_stem_width_options
     options.update(stem_width_options)
 
     return options
