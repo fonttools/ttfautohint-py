@@ -1,5 +1,6 @@
 import sys
 import os
+from collections import OrderedDict
 from ttfautohint._compat import ensure_binary, ensure_text, basestring, open
 
 
@@ -37,6 +38,20 @@ USER_OPTIONS = dict(
     verbose=False,
 )
 
+
+class TAStemWidthMode(object):
+    NATURAL = -1
+    QUANTIZED = 0
+    STRONG = 1
+
+
+STEM_WIDTH_MODE_OPTIONS = OrderedDict(
+    gray_stem_width_mode=TAStemWidthMode.QUANTIZED,
+    gdi_stem_width_mode=TAStemWidthMode.STRONG,
+    dw_stem_width_mode=TAStemWidthMode.QUANTIZED,
+)
+
+# Deprecated; use stem width mode options
 STRONG_STEM_WIDTH_OPTIONS = dict(
     gdi_cleartype_strong_stem_width=True,
     gray_strong_stem_width=False,
@@ -197,6 +212,28 @@ def strong_stem_width(s):
     return result
 
 
+def stem_width_mode(s):
+    if len(s) != 3:
+        import argparse
+        raise argparse.ArgumentTypeError(
+            "Stem width mode string must consist of exactly three letters")
+    modes = {
+        "n": TAStemWidthMode.NATURAL,
+        "q": TAStemWidthMode.QUANTIZED,
+        "s": TAStemWidthMode.STRONG}
+    letters = sorted(repr(m) for m in modes)
+    result = {}
+    for i, mode in enumerate(STEM_WIDTH_MODE_OPTIONS):
+        m = s[i]
+        if m not in modes:
+            import argparse
+            raise argparse.ArgumentTypeError(
+                "Stem width mode letter for %s must be %s, or %s"
+                % (mode, ", ".join(letters[:-1]), letters[-1]))
+        result[mode] = modes[m]
+    return result
+
+
 def stdin_or_input_path_type(s):
     # the special argument "-" means sys.stdin
     if s == "-":
@@ -272,6 +309,13 @@ def parse_args(args=None):
         help="output file (default: standard output)")
     parser.add_argument(
         "--debug", action="store_true", help="print debugging information")
+    parser.add_argument(
+        "-a", "--stem-width-mode", type=stem_width_mode, metavar="S",
+        default=STEM_WIDTH_MODE_OPTIONS,
+        help=("select stem width mode for grayscale, GDI ClearType, and DW "
+              "ClearType, where S is a string of three letters with possible "
+              "values 'n' for natural, 'q' for quantized, and 's' for strong "
+              "(default: qsq)"))
     parser.add_argument(
         "-c", "--composites", dest="hint_composites", action="store_true",
         help="hint glyph composites also")
