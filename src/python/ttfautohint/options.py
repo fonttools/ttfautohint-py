@@ -43,12 +43,21 @@ try:
 except ImportError:
     # make do without the real Enum type, python3 only... :(
     def IntEnum(typename, field_names, start=1):
+
         @property
         def __members__(self):
             return OrderedDict([(k, getattr(self, k))
                                 for k in self._fields])
+
+        def __call__(self, value):
+            if value not in self:
+                raise ValueError("%s is not a valid %s" % (value, typename))
+            return value
+
         base = namedtuple(typename, field_names)
-        klass = type(typename, (base,), {"__members__": __members__})
+        attributes = {"__members__": __members__,
+                      "__call__": __call__}
+        klass = type(typename, (base,), attributes)
         return klass._make(range(start, len(field_names) + start))
 
 
@@ -67,14 +76,14 @@ STEM_WIDTH_MODE_OPTIONS = OrderedDict([
     ("dw_stem_width_mode", StemWidthMode.QUANTIZED),
 ])
 
+USER_OPTIONS.update(STEM_WIDTH_MODE_OPTIONS)
+
 # Deprecated; use stem width mode options
 STRONG_STEM_WIDTH_OPTIONS = dict(
     gdi_cleartype_strong_stem_width=True,
     gray_strong_stem_width=False,
     dw_cleartype_strong_stem_width=False,
 )
-
-USER_OPTIONS.update(STRONG_STEM_WIDTH_OPTIONS)
 
 PRIVATE_OPTIONS = frozenset([
     "in_buffer_len",
@@ -193,6 +202,10 @@ def validate_options(kwargs):
 
     if opts["family_suffix"] is not None:
         opts["family_suffix"] = ensure_text(opts["family_suffix"])
+
+    for mode_option in STEM_WIDTH_MODE_OPTIONS:
+        # raises ValueError if integer value is not a valid stem width mode
+        opts[mode_option] = StemWidthMode(opts[mode_option])
 
     return opts
 
