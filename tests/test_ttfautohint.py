@@ -72,7 +72,7 @@ class TestTTFAutohint(object):
         assert u"; ttfautohint" in nameID5
 
         assert (
-            u' -l 8 -r 50 -G 200 -x 14 -D latn -f none -w G -X ""'
+            u' -l 8 -r 50 -G 200 -x 14 -D latn -f none -a qsq -X ""'
             in nameID5)
 
     def test_family_suffix(self, unhinted):
