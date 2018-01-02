@@ -49,8 +49,8 @@ StemWidthMode = IntEnum("StemWidthMode",
 
 STEM_WIDTH_MODE_OPTIONS = OrderedDict([
     ("gray_stem_width_mode", StemWidthMode.QUANTIZED),
-    ("gdi_stem_width_mode", StemWidthMode.STRONG),
-    ("dw_stem_width_mode", StemWidthMode.QUANTIZED),
+    ("gdi_cleartype_stem_width_mode", StemWidthMode.STRONG),
+    ("dw_cleartype_stem_width_mode", StemWidthMode.QUANTIZED),
 ])
 
 USER_OPTIONS.update(STEM_WIDTH_MODE_OPTIONS)

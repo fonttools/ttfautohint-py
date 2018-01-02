@@ -351,32 +351,32 @@ def test_strong_stem_width_invalid():
             "nnn",
             {
                 "gray_stem_width_mode": StemWidthMode.NATURAL,
-                "gdi_stem_width_mode": StemWidthMode.NATURAL,
-                "dw_stem_width_mode": StemWidthMode.NATURAL
+                "gdi_cleartype_stem_width_mode": StemWidthMode.NATURAL,
+                "dw_cleartype_stem_width_mode": StemWidthMode.NATURAL
             }
         ),
         (
             "qqq",
             {
                 "gray_stem_width_mode": StemWidthMode.QUANTIZED,
-                "gdi_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_stem_width_mode": StemWidthMode.QUANTIZED
+                "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
             }
         ),
         (
             "sss",
             {
                 "gray_stem_width_mode": StemWidthMode.STRONG,
-                "gdi_stem_width_mode": StemWidthMode.STRONG,
-                "dw_stem_width_mode": StemWidthMode.STRONG
+                "gdi_cleartype_stem_width_mode": StemWidthMode.STRONG,
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
             }
         ),
         (
             "nqs",
             {
                 "gray_stem_width_mode": StemWidthMode.NATURAL,
-                "gdi_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_stem_width_mode": StemWidthMode.STRONG
+                "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
             }
         ),
     ],
