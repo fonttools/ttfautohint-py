@@ -11,6 +11,7 @@ from ttfautohint._compat import ensure_binary, text_type
 from ttfautohint.options import (
     validate_options, format_varargs, strong_stem_width,
     stdin_or_input_path_type, stdout_or_output_path_type, parse_args,
+    stem_width_mode,
 )
 
 
@@ -341,6 +342,58 @@ def test_strong_stem_width_invalid():
     with pytest.raises(argparse.ArgumentTypeError,
                        match="invalid value: 'a'"):
         strong_stem_width("a")
+
+
+@pytest.mark.parametrize(
+    "string, expected",
+    [
+        (
+            "nnn",
+            {
+                "gray_stem_width_mode": -1,
+                "gdi_stem_width_mode": -1,
+                "dw_stem_width_mode": -1
+            }
+        ),
+        (
+            "qqq",
+            {
+                "gray_stem_width_mode": 0,
+                "gdi_stem_width_mode": 0,
+                "dw_stem_width_mode": 0
+            }
+        ),
+        (
+            "sss",
+            {
+                "gray_stem_width_mode": 1,
+                "gdi_stem_width_mode": 1,
+                "dw_stem_width_mode": 1
+            }
+        ),
+        (
+            "nqs",
+            {
+                "gray_stem_width_mode": -1,
+                "gdi_stem_width_mode": 0,
+                "dw_stem_width_mode": 1
+            }
+        ),
+    ],
+    ids=["nnn", "qqq", "sss", "nqs"]
+)
+def test_stem_width_mode(string, expected):
+    assert stem_width_mode(string) == expected
+
+
+def test_stem_width_mode_invalid():
+    with pytest.raises(argparse.ArgumentTypeError,
+                       match="must consist of exactly three letters"):
+        stem_width_mode("nnnn")
+
+    with pytest.raises(argparse.ArgumentTypeError,
+                       match="Stem width mode letter for .* must be"):
+        stem_width_mode("zzz")
 
 
 @pytest.fixture(
