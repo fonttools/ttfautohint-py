@@ -91,18 +91,18 @@ $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
 	@rm -rf $(TMP)/ttfautohint
 	@mkdir -p $(TMP)/ttfautohint
 	cd $(TMP)/ttfautohint; $(SRC)/ttfautohint/configure \
-        --disable-dependency-tracking \
-        --without-qt \
-        --without-doc \
-        --prefix="$(PREFIX)" \
-        $(LIBTTFAUTOHINT_OPTIONS) \
-        --with-freetype-config="$(PREFIX)/bin/freetype-config" \
-        CFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CFLAGS)" \
-        CXXFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CXXFLAGS)" \
-        LDFLAGS="$(LDFLAGS)" \
-        PKG_CONFIG=true \
-        HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
-        HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz -lfreetype"
+          --disable-dependency-tracking \
+          --without-qt \
+          --without-doc \
+          --prefix="$(PREFIX)" \
+          $(LIBTTFAUTOHINT_OPTIONS) \
+          --with-freetype-config="$(PREFIX)/bin/freetype-config" \
+          CFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CFLAGS)" \
+          CXXFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CXXFLAGS)" \
+          LDFLAGS="$(LDFLAGS)" \
+          PKG_CONFIG=true \
+          HARFBUZZ_CFLAGS="$(CPPFLAGS)/harfbuzz" \
+          HARFBUZZ_LIBS="$(LDFLAGS) -lharfbuzz -lfreetype"
 	cd $(TMP)/ttfautohint; make
 	cd $(TMP)/ttfautohint; make install
 	@touch $(TMP)/.ttfautohint-stamp
