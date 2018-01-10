@@ -47,42 +47,41 @@ $(TMP)/.freetype-stamp:
 	@rm -rf $(TMP)/freetype
 	@mkdir -p $(TMP)/freetype
 	cd $(TMP)/freetype; $(SRC)/freetype2/configure \
-        --without-bzip2 \
-        --without-png \
-        --without-zlib \
-        --without-harfbuzz \
-        --prefix="$(PREFIX)" \
-        --enable-static \
-        --disable-shared \
-        PKG_CONFIG=" " \
-        CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
-        CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
-        LDFLAGS="$(LDFLAGS)"
+	  --without-bzip2 \
+	  --without-png \
+	  --without-zlib \
+	  --without-harfbuzz \
+	  --prefix="$(PREFIX)" \
+	  --enable-static \
+	  --disable-shared \
+	  PKG_CONFIG=" " \
+	  CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
+	  CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
+	  LDFLAGS="$(LDFLAGS)"
 	cd $(TMP)/freetype; make
 	cd $(TMP)/freetype; make install
 	@touch $(TMP)/.freetype-stamp
 
 $(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
-	cd $(SRC)/harfbuzz; ./autogen.sh
-	cd $(SRC)/harfbuzz; make distclean
+	cd $(SRC)/harfbuzz; NOCONFIGURE=1 ./autogen.sh
 	@rm -rf $(TMP)/harfbuzz
 	@mkdir -p $(TMP)/harfbuzz
 	cd $(TMP)/harfbuzz; $(SRC)/harfbuzz/configure \
-        --disable-dependency-tracking \
-        --disable-gtk-doc-html \
-        --with-glib=no \
-        --with-cairo=no \
-        --with-fontconfig=no \
-        --with-icu=no \
-        --prefix=$(PREFIX) \
-        --enable-static \
-        --disable-shared \
-        CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
-        CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
-        LDFLAGS="$(LDFLAGS)" \
-        PKG_CONFIG=true \
-        FREETYPE_CFLAGS="$(CPPFLAGS)/freetype2" \
-        FREETYPE_LIBS="$(LDFLAGS) -lfreetype"
+	  --disable-dependency-tracking \
+	  --disable-gtk-doc-html \
+	  --with-glib=no \
+	  --with-cairo=no \
+	  --with-fontconfig=no \
+	  --with-icu=no \
+	  --prefix=$(PREFIX) \
+	  --enable-static \
+	  --disable-shared \
+	  CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
+	  CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
+	  LDFLAGS="$(LDFLAGS)" \
+	  PKG_CONFIG=true \
+	  FREETYPE_CFLAGS="$(CPPFLAGS)/freetype2" \
+	  FREETYPE_LIBS="$(LDFLAGS) -lfreetype"
 	cd $(TMP)/harfbuzz; make
 	cd $(TMP)/harfbuzz; make install
 	@touch $(TMP)/.harfbuzz-stamp
