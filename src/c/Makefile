@@ -54,6 +54,7 @@ $(TMP)/.freetype-stamp:
 	  --prefix="$(PREFIX)" \
 	  --enable-static \
 	  --disable-shared \
+	  --enable-freetype-config \
 	  PKG_CONFIG=" " \
 	  CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
 	  CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
