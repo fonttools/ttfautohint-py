@@ -68,10 +68,13 @@ after_success:
   - |
     if [[ $TRAVIS_TAG ]]; then
       pip install --upgrade twine
-      if [[ $TRAVIS_OS_NAME == linux ]]; then
-        pip install --upgrade setuptools setuptools_scm
-        python setup.py sdist
-        twine upload dist/*.zip
-      fi
+      # To build from source, the cloned git repository is required since
+      # we are using git submodules. Thus do not upload a sdist package, only wheels.
+      # TODO uncomment this once we can build from sdist.
+      # if [[ $TRAVIS_OS_NAME == linux ]]; then
+      #   pip install --upgrade setuptools setuptools_scm
+      #   python setup.py sdist
+      #   twine upload dist/*.zip
+      # fi
       twine upload wheelhouse/*.whl
     fi
