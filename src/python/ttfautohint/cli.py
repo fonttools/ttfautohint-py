@@ -97,6 +97,7 @@ Possible four-letter string values are
   latp (Latin Superscript Fallback),
   lisu (Lisu),
   mlym (Malayalam),
+  mong (Mongolian),
   mymr (Myanmar),
   nkoo (N'Ko),
   olck (Ol Chiki),
