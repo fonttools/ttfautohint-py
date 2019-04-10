@@ -10,6 +10,8 @@ env:
         - PLAT=x86_64
         - CONFIG_PATH="ci/multibuild_config.sh"
         - ENV_VARS_PATH="ci/env_vars.sh"
+        - TWINE_USERNAME="anthrotype"
+        - secure: enj37lbMXhBi4a/11W+k/MeUYKghH9h99Ri0vu6iBgSGlzIKzqflTvKgEIFjY+6VVqp3ZsbBkDsUtaO8J6zOx/onTRZq3TNqBrswvXfybMWMIXW7vT93V8vIDCvxJY/YpsH1CPMfXK97F6mpTT3q+DjbiRX8YV9aBuaVTUCg5NDAYRTcS7mlMJcAVh2VOUsW3f0nQlIvpgEO+v25FqEMkxZ9+uXE2mf7r9y/LF9fpaVO/6Z2Wnb9vJz0ZpcDZ27XNZUY6CwarzaIPyRj+5KzMelYb51sttN986vd9W51i4j4RwBqmrQC7P1hlHEW/nC6iTxl+vIMRBYanK7mzpOElFs4Z2WjGTVZgYUcV5q6MaujSb4wJnvjLiJOvrA94WVfCrdilBG/5L0T8B/y5vtnJs0kUPSIkvT1tz1XTgP6xU9Aa8KZ63FvPVnAwft1gefzAmEwVFiUTo6mgM5MTubL1E26ZP8omFLUIM7MxjMC3haD21oV2D19FGXx1d9PNm1IIy3l3UjvP0sY8Qu1c0r7kliPEb95rLTB+P3Wa1o1dkdyAnVyeELP3546M3V054mFe5Ii3o/qzmVmRqdJtMYo9BAoEwOGhzE+UzGe/CqGPRblAxVjf0W2jLbFcr0xphUB7J9iBLTe7k3wgqa8Z58VYY0sKHVkNMfnri3XsAmmPe0=
 
 language: python
 # The travis Python version is unrelated to the version we build and test
@@ -63,19 +65,13 @@ after_success:
   - pip install codecov
   - coverage combine
   - codecov --env TRAVIS_OS_NAME MB_PYTHON_VERSION
-  # copy compiled wheels to dist/ where Travis `dpl` tool can find them and upload to PyPI
-  - if [ -n "$TRAVIS_TAG" ]; then mkdir -p dist; cp wheelhouse/*.whl dist; fi
-
-deploy:
-  # deploy to PyPI on tags
-  provider: pypi
-  server: https://upload.pypi.org/legacy/
-  on:
-    repo: fonttools/ttfautohint-py
-    tags: true
-    all_branches: true
-  user: anthrotype
-  password:
-    secure: Ta2s+1qtNSAFzCLvMG/U6uArMOqox9g7NbMx6GWWlBaoN/c+Ub4a/xhuHxg5tl6vb6xfsaEnhf0K4SRQXM/R1weEf4I5lF+eAJgESI9lILvNPJI7Rv7HL623GjhktYbQ48BfdPWPX5s0/5Frb2rGwYi15/7xJnTpFTB0q+DF5YmOeQoP3HKkuHFM8YmE/OzdOiwHebDUM72uSmlnLpC7lGc4SKq8mano70T4cc/Ff7YSI9A7rVhN5UKK/T77ZBKjZiUovbOpgsbiRm22m3hH6sgPSA1NUzt05aSdaFV5X9ZGIL63JWeU4SxaVHrEZD+wgMrXPt1/mGuTEWlwNedHr3rSCcoxQqdRsPUhFuswO2yN4vYeXxaBb2TnyR3pWf367MXlaMel+pHmjdGKVCgSVcVAmNkpKQKjMNU+QQmBkG/ROz0838TGj/d3zSz/yJGXNn5673BUMQ9cUO092/wUfKINR9cHAF3ZYrDMyOHsgFnE9zMiRdlASToeW69uV5OqsGG1LTX9bwA/BaGJUyNJF8rNLu628HFf0QyYUyr3oiN5D50bEp1xwX9WZ5HLLjISq1z5LmCtY9Ot+Fs/vZVDsrYARUrKB6rylSfUhmx0S6k81AHHdYIwKxs78MWpDV3/ksc2vTJPUgwuWpg20ijlOHDZUzFDXHWXuqNLZdxXkNY=
-  skip_cleanup: true
-  distributions: check
+  - |
+    if [[ $TRAVIS_TAG ]]; then
+      $PYTHON -m pip install $PIP_INSTALL_OPTIONS twine
+      if [[ $TRAVIS_OS_NAME == linux ]]; then
+        $PYTHON -m pip install $PIP_INSTALL_OPTIONS setuptools
+        $PYTHON setup.py sdist
+        $PYTHON -m twine upload dist/*.zip
+      fi
+      $PYTHON -m twine upload wheelhouse/*.whl
+    fi
