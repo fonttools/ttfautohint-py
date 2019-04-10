@@ -88,7 +88,6 @@ TEST_INFO_DETAILED = TEST_INFO + (
 @pytest.mark.parametrize(
     "plat_id, enc_id",
     [(1, 0), (3, 1), (3, 10)],
-    ids=lambda t: "-".join(str(i) for i in t)
 )
 def test_info_name_id_5(plat_id, enc_id, detailed_info, font_version,
                         previous_info, appendix):
