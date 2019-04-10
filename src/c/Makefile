@@ -23,10 +23,12 @@ else
   LIBTTFAUTOHINT_OPTIONS += --enable-shared
   ifeq ($(shell uname -s), Darwin)
     LIBTTFAUTOHINT := "$(LIB_NAME).dylib"
-    # on macOS, we want a "universal" Mach-O binary (both 32 and 64 bit)
-    CFLAGS   += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
-    CXXFLAGS += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
-    LDFLAGS  += -m32 -arch i386 -m64 -arch x86_64 -mmacosx-version-min=10.6
+    # on macOS, we want a 64-bit only lib targeting >= 10.9, since harfbuzz >= 2.4
+    # requires c++11
+    MACOSX_DEPLOYMENT_TARGET ?= 10.9
+    CFLAGS   += -m64 -arch x86_64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+    CXXFLAGS += -m64 -arch x86_64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+    LDFLAGS  += -m64 -arch x86_64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
   else ifeq ($(shell uname -s), Linux)
     LIBTTFAUTOHINT := "$(LIB_NAME).so"
   endif
