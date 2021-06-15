@@ -44,3 +44,20 @@ curl http://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.gz -L -o libtool.tar.gz &&
     make && \
     make install
 
+# bison
+curl https://ftp.gnu.org/gnu/bison/bison-3.7.6.tar.xz -L -o bison.tar.xz && \
+    mkdir bison && \
+    tar -zxf bison.tar.xz -C bison --strip-components 1 && \
+    cd bison && \
+    ./configure --prefix=/usr/local && \
+    make && \
+    make install
+
+# flex
+curl https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz -L -o  flex.tar.gz && \
+    mkdir flex && \
+    tar -zxf flex.tar.gz -C flex --strip-components 1 && \
+    cd flex && \
+    ./configure --prefix=/usr/local && \
+    make && \
+    make install
