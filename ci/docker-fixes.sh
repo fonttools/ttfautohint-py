@@ -47,7 +47,7 @@ curl http://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.gz -L -o libtool.tar.gz &&
 # bison
 curl https://ftp.gnu.org/gnu/bison/bison-3.7.6.tar.xz -L -o bison.tar.xz && \
     mkdir bison && \
-    tar -zxf bison.tar.xz -C bison --strip-components 1 && \
+    xz --decompress --stdout bison.tar.xz | tar xf - -C bison --strip-components 1 && \
     cd bison && \
     ./configure --prefix=/usr/local && \
     make && \
