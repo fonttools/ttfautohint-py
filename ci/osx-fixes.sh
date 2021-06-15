@@ -1,1 +1,1 @@
-brew install libtool ragel bison flex
+brew install libtool ragel bison flex automake
