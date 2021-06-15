@@ -44,10 +44,8 @@ jobs:
       BUILD_COMMIT: HEAD
       PLAT: ${{ matrix.platform }}
       MB_PYTHON_VERSION: ${{ matrix.python }}
-      TRAVIS_OS_NAME: ${{ matrix.os-name }}
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos-target }}
-      CONFIG_PATH: "ci/multibuild_config.sh"
-      ENV_VARS_PATH: "ci/env_vars.sh"
+      CIBW_BEFORE_ALL: sh ci/docker-fixes.sh
     steps:
       - uses: actions/checkout@v2
         with:
