@@ -15,13 +15,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ "macos-10.15" ]
+        os: [ "macos-11" ]
     env:
       BUILD_COMMIT: HEAD
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-      CIBW_BUILD: "cp39-*"
+      CIBW_SKIP: "cp38-macosx* cp37-macosx*"
     steps:
       - uses: actions/checkout@v2
         with:
