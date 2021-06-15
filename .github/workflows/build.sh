@@ -14,8 +14,8 @@ if [[ "$MB_PYTHON_VERSION" == pypy3* ]]; then
 fi
 
 echo "::group::Install a virtualenv"
-  source multibuild/common_utils.sh
-  source multibuild/travis_steps.sh
+  source ci/multibuild/common_utils.sh
+  source ci/multibuild/travis_steps.sh
   python3 -m pip install virtualenv
   before_install
 echo "::endgroup::"
