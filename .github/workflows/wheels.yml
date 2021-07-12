@@ -2,12 +2,6 @@ name: Wheels
 
 on: [push, pull_request]
 
-env:
-  REPO_DIR: .
-  BUILD_DEPENDS: ""
-  TEST_DEPENDS: "pytest pytest-cov"
-  WHEEL_SDIR: wheelhouse
-
 jobs:
   build:
     name: Build wheel ${{ matrix.os }}
