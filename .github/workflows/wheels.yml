@@ -15,7 +15,7 @@ jobs:
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-      CIBW_SKIP: "cp38-macosx* cp37-macosx*"
+      CIBW_SKIP: "cp38-macosx* cp37-macosx* cp36-macosx*"
     steps:
       - uses: actions/checkout@v2
         with:
