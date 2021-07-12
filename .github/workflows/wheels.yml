@@ -21,8 +21,8 @@ jobs:
         uses: actions/checkout@master
         if: startsWith(matrix.os, 'windows')
         with:
-        repository: coreutils/gnulib
-        path: C:\Users\runneradmin\AppData\Local\Temp\gnulib
+          repository: coreutils/gnulib
+          path: C:\Users\runneradmin\AppData\Local\Temp\gnulib
       - uses: actions/checkout@v2
         with:
           submodules: recursive
