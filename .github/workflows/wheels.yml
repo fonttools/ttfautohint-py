@@ -40,7 +40,6 @@ jobs:
           echo "/usr/local/opt/automake/bin" >> $GITHUB_PATH
       - name: Update environment (Win)
         if: startsWith(matrix.os, 'windows')
-        shell: bash
         run: |
           echo "GNULIB_SRCDIR=D:\a\ttfautohint-py\ttfautohint-py" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
       - name: Install cibuildwheel
