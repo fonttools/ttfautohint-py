@@ -26,9 +26,9 @@ else
     # on macOS, we want a 64-bit only lib targeting >= 10.9, since harfbuzz >= 2.4
     # requires c++11
     MACOSX_DEPLOYMENT_TARGET ?= 10.9
-    CFLAGS   += -m64 -arch x86_64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
-    CXXFLAGS += -m64 -arch x86_64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
-    LDFLAGS  += -m64 -arch x86_64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+    CFLAGS   += -m64 -arch x86_64 -arch arm64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+    CXXFLAGS += -m64 -arch x86_64 -arch arm64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+    LDFLAGS  += -m64 -arch x86_64 -arch arm64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
   else ifeq ($(shell uname -s), Linux)
     LIBTTFAUTOHINT := "$(LIB_NAME).so"
   endif
