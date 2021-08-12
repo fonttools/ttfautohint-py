@@ -22,6 +22,7 @@ jobs:
       BUILD_COMMIT: HEAD
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
+      CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: x86_64 universal2
       # Building for one python version is enough, since this is a
       # ctypes-based 'universal binary wheel' (py2.py3-none-*) not
