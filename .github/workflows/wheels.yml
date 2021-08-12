@@ -23,7 +23,10 @@ jobs:
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-      CIBW_SKIP: "cp38-* cp37-* cp36-* *-manylinux_i686"
+      # Building for one python version is enough, since this is a
+      # ctypes-based 'universal binary wheel' (py2.py3-none-*) not
+      # linked to a specific python version or implementation.
+      CIBW_BUILD: "cp39-*"
     steps:
       - uses: actions/checkout@v2
         with:
