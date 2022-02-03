@@ -28,6 +28,7 @@ jobs:
       # ctypes-based 'universal binary wheel' (py2.py3-none-*) not
       # linked to a specific python version or implementation.
       CIBW_BUILD: "cp39-*"
+      CIBW_SKIP: "*-musllinux*"
     steps:
       - uses: actions/checkout@v2
         with:
