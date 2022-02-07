@@ -22,7 +22,6 @@ jobs:
       BUILD_COMMIT: HEAD
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
-      CIBW_BEFORE_ALL_WINDOWS: C:\msys64\usr\bin\bash ci\windows-fixes.sh
       CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: x86_64 universal2
       # Building for one python version is enough, since this is a
@@ -30,11 +29,22 @@ jobs:
       # linked to a specific python version or implementation.
       CIBW_BUILD: "cp39-*"
       CIBW_SKIP: "*-musllinux*"
+      CIBW_BUILD_VERBOSITY_WINDOWS: 1
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
           fetch-depth: 0
+      - name: "Set up MSYS2 (Windows)"
+        uses: msys2/setup-msys2@v2
+        if: startsWith(matrix.os, 'windows')
+        with:
+          release: false
+          install: >-
+            autotools
+            git
+            mingw-w64-i686-ragel
+            mingw-w64-x86_64-ragel
       - uses: actions/setup-python@v2
         with:
           python-version: 3.9
