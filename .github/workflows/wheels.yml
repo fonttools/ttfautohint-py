@@ -17,11 +17,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ "ubuntu-20.04", "macos-11" ]
+        os: [ "ubuntu-20.04", "macos-11", "windows-latest" ]
     env:
       BUILD_COMMIT: HEAD
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
+      CIBW_BEFORE_ALL_WINDOWS: C:\msys64\usr\bin\bash ci\windows-fixes.sh
       CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: x86_64 universal2
       # Building for one python version is enough, since this is a
