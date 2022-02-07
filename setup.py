@@ -93,10 +93,12 @@ if sys.platform == "win32":
         # this tells bash to keep the current working directory
         CHERE_INVOKING="1",
     )
-    # we need to run make from an msys2 login shell
-    cmd = ["bash", "-lc", "make"]
+    # we need to run make from an msys2 login shell.
+    # We do 'make clean' because libraries are built in-place and we want
+    # to make sure previous builds don't leave anything behind.
+    cmd = ["bash", "-lc", "make clean all"]
 else:
-    cmd = ["make"]
+    cmd = ["make", "clean", "all"]
 
 libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
                                cmd=cmd,
