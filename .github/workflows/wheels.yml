@@ -28,7 +28,8 @@ jobs:
       # linked to a specific python version or implementation.
       CIBW_BUILD: "cp39-*"
       CIBW_SKIP: "*-musllinux*"
-      CIBW_BUILD_VERBOSITY_WINDOWS: 1
+      CIBW_BUILD_VERBOSITY: 1
+      CIBW_ENVIRONMENT_WINDOWS: MSYS2ROOT="D:\\msys64"
     steps:
       - uses: actions/checkout@v2
         with:
@@ -38,8 +39,12 @@ jobs:
         uses: msys2/setup-msys2@v2
         if: startsWith(matrix.os, 'windows')
         with:
-          release: false
+          release: true
+          location: D:\
           install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-i686-toolchain
             autotools
             git
             mingw-w64-i686-ragel

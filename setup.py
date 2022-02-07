@@ -79,14 +79,14 @@ cmdclass['build_ext'] = SharedLibBuildExt
 env = dict(os.environ)
 if sys.platform == "win32":
     import struct
+
+    msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
+    msys2_bin = os.path.join(msys2_root, "usr", "bin")
     # select mingw32 or mingw64 toolchain depending on python architecture
     bits = struct.calcsize("P") * 8
     toolchain = "mingw%d" % bits
-    PATH = ";".join([
-        "C:\\msys64\\%s\\bin" % toolchain,
-        "C:\\msys64\\usr\\bin",
-        env["PATH"]
-    ])
+    mingw_bin = os.path.join(msys2_root, toolchain, "bin")
+    PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
     env.update(
         PATH=PATH,
         MSYSTEM=toolchain.upper(),
