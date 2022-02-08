@@ -30,7 +30,7 @@ jobs:
       CIBW_SKIP: "*-musllinux*"
       CIBW_BUILD_VERBOSITY: 1
       CIBW_TEST_REQUIRES: -rtest-requirements.txt
-      CIBW_TEST_COMMAND: coverage run --parallel-mode -m pytest {project}/tests
+      CIBW_TEST_COMMAND: cd {project} && coverage run --parallel-mode -m pytest
     steps:
       - uses: actions/checkout@v2
         with:
