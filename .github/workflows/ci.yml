@@ -38,7 +38,7 @@ jobs:
       matrix:
         os: [ "ubuntu-20.04", "macos-11", "windows-latest" ]
     env:
-      TTFAUTOHINTPY_BUNDLE_DLL: 1
+      CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_DLL=1
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_LINUX: x86_64
@@ -79,7 +79,7 @@ jobs:
         shell: bash
         # applying patches makes the working directory 'dirty', which changes the
         # git-generated version, so we save the current version beforehand
-        run: echo CIBW_ENVIRONMENT_WINDOWS="SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
+        run: echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
       - name: Apply local patches (Windows)
         if: startsWith(matrix.os, 'windows')
         shell: bash
