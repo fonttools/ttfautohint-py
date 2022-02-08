@@ -41,8 +41,8 @@ following development tools are also required: ``autoconf``, ``automake``,
 ``libtool``, ``flex``, ``bison`` and ``ragel``. Please check the respective
 documentation of these libraries for more information.
 
-.. |Github CI Status| image:: https://img.shields.io/github/workflow/status/fonttools/ttfautohint-py/Wheels
-   :target: https://github.com/fonttools/ttfautohint-py/actions/workflows/wheels.yml
+.. |Github CI Status| image:: https://img.shields.io/github/workflow/status/fonttools/ttfautohint-py/CI
+   :target: https://github.com/fonttools/ttfautohint-py/actions/workflows/ci.yml
 .. |PyPI| image:: https://img.shields.io/pypi/v/ttfautohint-py.svg
    :target: https://pypi.python.org/pypi/ttfautohint-py
 .. |Codecov| image:: https://codecov.io/gh/fonttools/ttfautohint-py/branch/master/graph/badge.svg

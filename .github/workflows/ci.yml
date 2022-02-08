@@ -1,4 +1,4 @@
-name: Wheels
+name: CI
 
 on:
   push:
@@ -11,7 +11,26 @@ on:
       - published
 
 jobs:
-  build:
+  build_sdist:
+    name: Build Source Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+      - name: Build sdist
+        run: pipx run build --sdist
+      - name: Check metadata
+        run: pipx run twine check dist/*.tar.gz
+      - uses: actions/upload-artifact@v2
+        with:
+          path: dist/*.tar.gz
+
+  build_wheels:
     name: Build wheel ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -19,6 +38,7 @@ jobs:
       matrix:
         os: [ "ubuntu-20.04", "macos-11", "windows-latest" ]
     env:
+      TTFAUTOHINTPY_BUNDLE_DLL: 1
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_LINUX: x86_64
@@ -97,7 +117,7 @@ jobs:
 
   deploy:
     name: Upload if release
-    needs: [build]
+    needs: [build_sdist, build_wheels]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
 
