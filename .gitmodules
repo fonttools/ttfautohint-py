@@ -7,6 +7,3 @@
 [submodule "src/c/ttfautohint"]
 	path = src/c/ttfautohint
 	url = http://repo.or.cz/ttfautohint.git
-[submodule "ci/multibuild"]
-	path = ci/multibuild
-	url = https://github.com/matthew-brett/multibuild

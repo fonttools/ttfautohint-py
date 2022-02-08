@@ -1,0 +1,18 @@
+diff --git a/configure.ac b/configure.ac
+index 24ee6329f..2f0463fb0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -118,8 +118,12 @@ esac
+ AC_MSG_RESULT([$hb_os_win32])
+ AM_CONDITIONAL(OS_WIN32, test "$hb_os_win32" = "yes")
+ 
++# XXX Don't check for pthread for mingw toolchain on Windows
++# https://github.com/fonttools/ttfautohint-py/pull/12
+ have_pthread=false
+-AX_PTHREAD([have_pthread=true])
++if test "$hb_os_win32" = "no"; then
++    AX_PTHREAD([have_pthread=true])
++fi
+ if $have_pthread; then
+ 	AC_DEFINE(HAVE_PTHREAD, 1, [Have POSIX threads])
+ fi

@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  release:
+    types:
+      - published
+
+jobs:
+  build_sdist:
+    name: Build Source Distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+      - name: Build sdist
+        run: pipx run build --sdist
+      - name: Check metadata
+        run: pipx run twine check dist/*.tar.gz
+      - uses: actions/upload-artifact@v2
+        with:
+          path: dist/*.tar.gz
+
+  build_wheels:
+    name: Build wheel ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubuntu-20.04", "macos-11", "windows-latest" ]
+    env:
+      CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_DLL=1
+      CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
+      CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
+      CIBW_ARCHS_LINUX: x86_64
+      CIBW_ARCHS_MACOS: x86_64 universal2
+      # Building for one python version is enough, since this is a
+      # ctypes-based 'universal binary wheel' (py2.py3-none-*) not
+      # linked to a specific python version or implementation.
+      CIBW_BUILD: "cp39-*"
+      CIBW_SKIP: "*-musllinux*"
+      CIBW_BUILD_VERBOSITY: 1
+      CIBW_TEST_REQUIRES: -rtest-requirements.txt
+      CIBW_TEST_COMMAND: cd {project} && coverage run --parallel-mode -m pytest
+      # on Windows I need '/d' flag to change both drive and directory at once
+      CIBW_TEST_COMMAND_WINDOWS: cd /d {project} && coverage run --parallel-mode -m pytest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: "Set up MSYS2 (Windows)"
+        uses: msys2/setup-msys2@v2
+        if: startsWith(matrix.os, 'windows')
+        with:
+          release: false
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-i686-toolchain
+            autotools
+            git
+            mingw-w64-i686-ragel
+            mingw-w64-x86_64-ragel
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Set up environment (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        # applying patches makes the working directory 'dirty', which changes the
+        # git-generated version, so we save the current version beforehand
+        run: echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
+      - name: Apply local patches (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        run: src/c/apply_patches.sh
+      - name: Update path (Mac)
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          echo "/usr/local/opt/libtool/bin" >> $GITHUB_PATH
+          echo "/usr/local/opt/ragel/bin" >> $GITHUB_PATH
+          echo "/usr/local/opt/bison/bin" >> $GITHUB_PATH
+          echo "/usr/local/opt/flex/bin" >> $GITHUB_PATH
+          echo "/usr/local/opt/automake/bin" >> $GITHUB_PATH
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir dist
+      - name: Check wheels metadata
+        run: pipx run twine check dist/*.whl
+      - uses: actions/upload-artifact@v2
+        with:
+          path: dist/*.whl
+      - name: Generate coverage report
+        # linux wheels are built inside docker container, I don't know how to extract
+        # the .coverage file from there, so skip coverage/codacov from linux for now...
+        if: ${{ !startsWith(matrix.os, 'ubuntu') }}
+        run: |
+          pip install coverage
+          coverage combine
+          coverage xml
+      - name: Upload coverage to Codecov
+        if: ${{ !startsWith(matrix.os, 'ubuntu') }}
+        uses: codecov/codecov-action@v2
+        with:
+          file: coverage.xml
+
+  deploy:
+    name: Upload if release
+    needs: [build_sdist, build_wheels]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: artifact
+        path: dist
+
+    - uses: pypa/gh-action-pypi-publish@v1.4.2
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_PASSWORD }}
