@@ -31,6 +31,8 @@ jobs:
       CIBW_BUILD_VERBOSITY: 1
       CIBW_TEST_REQUIRES: -rtest-requirements.txt
       CIBW_TEST_COMMAND: cd {project} && coverage run --parallel-mode -m pytest
+      # on Windows I need '/d' flag to change both drive and directory at once
+      CIBW_TEST_COMMAND_WINDOWS: cd /d {project} && coverage run --parallel-mode -m pytest
     steps:
       - uses: actions/checkout@v2
         with:
