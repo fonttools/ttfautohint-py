@@ -30,7 +30,7 @@ jobs:
       CIBW_SKIP: "*-musllinux*"
       CIBW_BUILD_VERBOSITY: 1
       CIBW_TEST_REQUIRES: -rtest-requirements.txt
-      CIBW_TEST_COMMAND: coverage run -m pytest {project}/tests
+      CIBW_TEST_COMMAND: coverage run --parallel-mode -m pytest {project}/tests
     steps:
       - uses: actions/checkout@v2
         with:
@@ -79,6 +79,15 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           path: dist/*.whl
+      - name: Generate coverage report
+        run: |
+          pip install coverage
+          coverage combine
+          coverage xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          file: coverage.xml
 
   deploy:
     name: Upload if release
