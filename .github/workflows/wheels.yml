@@ -29,7 +29,6 @@ jobs:
       CIBW_BUILD: "cp39-*"
       CIBW_SKIP: "*-musllinux*"
       CIBW_BUILD_VERBOSITY: 1
-      CIBW_ENVIRONMENT_WINDOWS: MSYS2ROOT="D:\\msys64"
       CIBW_TEST_REQUIRES: -rtest-requirements.txt
       CIBW_TEST_COMMAND: coverage run -m pytest {project}/tests
     steps:
@@ -41,8 +40,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         if: startsWith(matrix.os, 'windows')
         with:
-          release: true
-          location: D:\
+          release: false
           install: >-
             base-devel
             mingw-w64-x86_64-toolchain
@@ -59,10 +57,10 @@ jobs:
         shell: bash
         # applying patches makes the working directory 'dirty', which changes the
         # git-generated version, so we save the current version beforehand
-        run: echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT_WINDOWS SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
+        run: echo CIBW_ENVIRONMENT_WINDOWS="SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
       - name: Apply local patches (Windows)
         if: startsWith(matrix.os, 'windows')
-        shell: msys2 {0}
+        shell: bash
         run: src/c/apply_patches.sh
       - name: Update path (Mac)
         if: startsWith(matrix.os, 'macos')
