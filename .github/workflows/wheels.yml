@@ -52,6 +52,16 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.9
+      - name: Set up environment (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        # applying patches makes the working directory 'dirty', which changes the
+        # git-generated version, so we save the current version beforehand
+        run: echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT_WINDOWS SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
+      - name: Apply local patches (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: msys2 {0}
+        run: src/c/apply_patches.sh
       - name: Update path (Mac)
         if: startsWith(matrix.os, 'macos')
         run: |
