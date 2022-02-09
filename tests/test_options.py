@@ -11,7 +11,7 @@ from ttfautohint._compat import ensure_binary, text_type
 from ttfautohint.options import (
     validate_options, format_varargs, strong_stem_width,
     stdin_or_input_path_type, stdout_or_output_path_type, parse_args,
-    stem_width_mode, StemWidthMode
+    stem_width_mode, StemWidthMode, _windows_cmdline2list
 )
 
 
@@ -529,3 +529,18 @@ class TestParseArgs(object):
     def test_show_ttfa_info_unsupported(self):
         with pytest.raises(NotImplementedError):
             parse_args("-T")
+
+    def test_parse_args_custom_splitfunc(self):
+        # https://github.com/fonttools/ttfautohint-py/issues/2
+        s = '"build folder\\unhinted\\Test_Lt.ttf" "output folder\\hinted\\Test_Lt.ttf"'
+        args = parse_args(s, splitfunc=_windows_cmdline2list)
+        assert args["in_file"] == "build folder\\unhinted\\Test_Lt.ttf"
+        assert args["out_file"] == "output folder\\hinted\\Test_Lt.ttf"
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="only for windows")
+    def test_parse_args_windows_paths(self):
+        # https://github.com/fonttools/ttfautohint-py/issues/2
+        s = '"build folder\\unhinted\\Test_Lt.ttf" "output folder\\hinted\\Test_Lt.ttf"'
+        args = parse_args(s)
+        assert args["in_file"] == "build folder\\unhinted\\Test_Lt.ttf"
+        assert args["out_file"] == "output folder\\hinted\\Test_Lt.ttf"

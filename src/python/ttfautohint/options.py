@@ -268,7 +268,57 @@ def stdout_or_output_path_type(s):
     return s
 
 
-def parse_args(args=None):
+def _windows_cmdline2list(cmdline):
+    """Build an argv list from a Microsoft shell style cmdline str.
+
+    The reverse of subprocess.list2cmdline that follows the same MS C runtime rules.
+    Borrowed from Jython source code:
+    https://github.com/jython/jython/blob/50729e6/Lib/subprocess.py#L668-L722
+    """
+    whitespace = ' \t'
+    # count of preceding '\'
+    bs_count = 0
+    in_quotes = False
+    arg = []
+    argv = []
+
+    for ch in cmdline:
+        if ch in whitespace and not in_quotes:
+            if arg:
+                # finalize arg and reset
+                argv.append(''.join(arg))
+                arg = []
+            bs_count = 0
+        elif ch == '\\':
+            arg.append(ch)
+            bs_count += 1
+        elif ch == '"':
+            if not bs_count % 2:
+                # Even number of '\' followed by a '"'. Place one
+                # '\' for every pair and treat '"' as a delimiter
+                if bs_count:
+                    del arg[-(bs_count / 2):]
+                in_quotes = not in_quotes
+            else:
+                # Odd number of '\' followed by a '"'. Place one '\'
+                # for every pair and treat '"' as an escape sequence
+                # by the remaining '\'
+                del arg[-(bs_count / 2 + 1):]
+                arg.append(ch)
+            bs_count = 0
+        else:
+            # regular char
+            arg.append(ch)
+            bs_count = 0
+
+    # A single trailing '"' delimiter yields an empty arg
+    if arg or in_quotes:
+        argv.append(''.join(arg))
+
+    return argv
+
+
+def parse_args(args=None, splitfunc=None):
     """Parse command line arguments and return a dictionary of options
     for ttfautohint.ttfautohint function.
 
@@ -295,8 +345,13 @@ def parse_args(args=None):
     else:
         capture_sys_exit = True
         if isinstance(args, basestring):
-            import shlex
-            args = shlex.split(args)
+            if splitfunc is None:
+                if sys.platform == "win32":
+                    splitfunc = _windows_cmdline2list
+                else:
+                    import shlex
+                    splitfunc = shlex.split
+            args = splitfunc(args)
 
     parser = argparse.ArgumentParser(
         prog="ttfautohint",
