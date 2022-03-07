@@ -8,6 +8,7 @@ from ctypes.util import find_library
 from io import open
 import sys
 import os
+import platform
 
 from ttfautohint._version import __version__
 from ttfautohint import memory
@@ -99,6 +100,10 @@ class TALibrary(object):
 
         out_buffer_p = POINTER(c_char)()
         out_buffer_len = c_size_t(0)
+
+        # For some reason the error callback causes a segfault on M1. See #14
+        if platform.system() == "Darwin" and platform.processor() == "arm64":
+            error_callback = None
 
         option_keys, option_values = format_varargs(
             out_buffer=byref(out_buffer_p),
