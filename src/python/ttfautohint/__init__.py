@@ -58,6 +58,8 @@ class TALibrary(object):
         version_string = lib.TTF_autohint_version_string().decode('ascii')
         self.version_string = version_string
 
+        # In the M1 ABI, ctypes counts the number of fixed arguments
+        # when building the varargs array. See https://bugs.python.org/issue42880
         lib.TTF_autohint.argtypes = [c_char_p]
 
     def _build_info_data(self, options):
