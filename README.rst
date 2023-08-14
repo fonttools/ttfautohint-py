@@ -42,7 +42,7 @@ following development tools are also required: ``autoconf``, ``automake``,
 documentation of these libraries for more information.
 
 .. |Github CI Status| image:: https://img.shields.io/github/workflow/status/fonttools/ttfautohint-py/ci.yml?branch=main
-   :target: https://github.com/fonttools/ttfautohint-py/actions/workflows/ci.yml
+   :target: https://github.com/fonttools/ttfautohint-py/actions/workflows/ci.yml?branch=main
 .. |PyPI| image:: https://img.shields.io/pypi/v/ttfautohint-py.svg
    :target: https://pypi.python.org/pypi/ttfautohint-py
 .. |Codecov| image:: https://codecov.io/gh/fonttools/ttfautohint-py/branch/master/graph/badge.svg
