@@ -1,124 +1,288 @@
-from __future__ import print_function, absolute_import
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages, Extension, Command
 from setuptools.command.build_ext import build_ext
+from setuptools.command.bdist_wheel import bdist_wheel
+from setuptools.command.egg_info import egg_info
+from distutils.command.clean import clean
+from distutils.errors import DistutilsSetupError
 from distutils.file_util import copy_file
-from distutils.dir_util import mkpath
+from distutils.dir_util import mkpath, remove_tree
 from distutils import log
 import os
-import sys
 import subprocess
-from io import open
 
+
+class UniversalBdistWheel(bdist_wheel):
+    def get_tag(self):
+        return ("py3", "none") + bdist_wheel.get_tag(self)[2:]
+
+
+class Download(Command):
+    user_options = [
+        ("ttfautohint-version=", None, "ttfautohint source version number to download"),
+        (
+            "ttfautohint-sha256=",
+            None,
+            "expected SHA-256 hash of the ttfautohint source archive",
+        ),
+        ("freetype-version=", None, "freetype version to download"),
+        ("freetype-sha256=", None, "expected SHA-256 hash of the freetype archive"),
+        ("harfbuzz-version=", None, "harfbuzz version to download"),
+        ("harfbuzz-sha256=", None, "expected SHA-256 hash of the harfbuzz archive"),
+        (
+            "download-dir=",
+            "d",
+            "where to unpack the 'ttfautohint' dir (default: src/c)",
+        ),
+        ("clean", None, "remove existing directory before downloading"),
+    ]
+    boolean_options = ["clean"]
+
+    TTFAUTOHINT_URL_TEMPLATE = (
+        "https://download.savannah.gnu.org/releases/freetype/"
+        "ttfautohint-{ttfautohint_version}.tar.gz"
+    )
+    FREETYPE_URL_TEMPLATE = (
+        "https://download.savannah.gnu.org/releases/freetype/"
+        "freetype-{freetype_version}.tar.xz"
+    )
+    HARFBUZZ_URL_TEMPLATE = (
+        "https://github.com/harfbuzz/harfbuzz/releases/download/{harfbuzz_version}/"
+        "harfbuzz-{harfbuzz_version}.tar.xz"
+    )
+
+    def initialize_options(self):
+        self.ttfautohint_version = None
+        self.ttfautohint_sha256 = None
+        self.freetype_version = None
+        self.freetype_sha256 = None
+        self.harfbuzz_version = None
+        self.harfbuzz_sha256 = None
+        self.download_dir = None
+        self.clean = False
+
+    def finalize_options(self):
+        if self.ttfautohint_version is None:
+            raise DistutilsSetupError("must specify --ttfautohint-version to download")
+        if self.freetype_version is None:
+            raise DistutilsSetupError("must specify --freetype-version to download")
+        if self.harfbuzz_version is None:
+            raise DistutilsSetupError("must specify --harfbuzz-version to download")
+
+        if self.ttfautohint_sha256 is None:
+            raise DistutilsSetupError(
+                "must specify --ttfautohint-sha256 of downloaded file"
+            )
+        if self.freetype_sha256 is None:
+            raise DistutilsSetupError(
+                "must specify --freetype-sha256 of downloaded file"
+            )
+        if self.harfbuzz_sha256 is None:
+            raise DistutilsSetupError(
+                "must specify --harfbuzz-sha256 of downloaded file"
+            )
+
+        if self.download_dir is None:
+            self.download_dir = os.path.join("src", "c")
+
+        self.to_download = {
+            "ttfautohint": self.TTFAUTOHINT_URL_TEMPLATE.format(**vars(self)),
+            "freetype": self.FREETYPE_URL_TEMPLATE.format(**vars(self)),
+            "harfbuzz": self.HARFBUZZ_URL_TEMPLATE.format(**vars(self)),
+        }
+
+    def run(self):
+        from urllib.request import urlopen
+        from io import BytesIO
+        import tarfile
+        import gzip
+        import lzma
+        import hashlib
+
+        for download_name, url in self.to_download.items():
+            output_dir = os.path.join(self.download_dir, download_name)
+            if self.clean and os.path.isdir(output_dir):
+                remove_tree(output_dir, verbose=self.verbose, dry_run=self.dry_run)
+
+            if os.path.isdir(output_dir):
+                log.info("{} was already downloaded".format(output_dir))
+            else:
+                archive_name = url.rsplit("/", 1)[-1]
+
+                mkpath(self.download_dir, verbose=self.verbose, dry_run=self.dry_run)
+
+                log.info("downloading {}".format(url))
+                if not self.dry_run:
+                    # response is not seekable so we first download *.tar.gz to an
+                    # in-memory file, and then extract all files to the output_dir
+                    f = BytesIO()
+                    with urlopen(url) as response:
+                        f.write(response.read())
+                    f.seek(0)
+
+                actual_sha256 = hashlib.sha256(f.getvalue()).hexdigest()
+                expected_sha256 = getattr(self, download_name + "_sha256")
+                if actual_sha256 != expected_sha256:
+                    from distutils.errors import DistutilsSetupError
+
+                    raise DistutilsSetupError(
+                        "invalid SHA-256 checksum:\n"
+                        "actual:   {}\n"
+                        "expected: {}".format(actual_sha256, expected_sha256)
+                    )
+
+                log.info("unarchiving {} to {}".format(archive_name, output_dir))
+                if not self.dry_run:
+                    ext = os.path.splitext(archive_name)[-1]
+                    if ext == ".xz":
+                        compression_module = lzma
+                    elif ext == ".gz":
+                        compression_module = gzip
+                    else:
+                        raise NotImplementedError(
+                            f"Don't know how to decompress archive with {ext} extension"
+                        )
+                    with compression_module.open(f) as archive:
+                        with tarfile.open(fileobj=archive) as tar:
+                            filelist = tar.getmembers()
+                            first = filelist[0]
+                            if not (
+                                first.isdir() and first.name.startswith(download_name)
+                            ):
+                                from distutils.errors import DistutilsSetupError
+
+                                raise DistutilsSetupError(
+                                    "The downloaded archive is not recognized as "
+                                    "a valid ttfautohint source tarball"
+                                )
+                            # strip the root directory before extracting
+                            rootdir = first.name + "/"
+                            to_extract = []
+                            for member in filelist[1:]:
+                                if member.name.startswith(rootdir):
+                                    member.name = member.name[len(rootdir) :]
+                                    to_extract.append(member)
+                            tar.extractall(output_dir, members=to_extract)
+
+
+class Executable(Extension):
+    if os.name == "nt":
+        suffix = ".exe"
+    else:
+        suffix = ""
+
+    def __init__(self, name, output_dir=".", cwd=None, env=None):
+        Extension.__init__(self, name, sources=[])
+        self.target = self.name.split(".")[-1] + self.suffix
+        self.output_dir = output_dir
+        self.cwd = cwd
+        self.env = env
+
+
+class ExecutableBuildExt(build_ext):
+    def finalize_options(self):
+        from distutils.ccompiler import get_default_compiler
+
+        build_ext.finalize_options(self)
+
+        if self.compiler is None:
+            self.compiler = get_default_compiler(os.name)
+        self._compiler_env = dict(os.environ)
+
+    def get_ext_filename(self, ext_name):
+        for ext in self.extensions:
+            if isinstance(ext, Executable):
+                return os.path.join(*ext_name.split(".")) + ext.suffix
+        return build_ext.get_ext_filename(self, ext_name)
+
+    def run(self):
+        self.run_command("download")
+
+        if self.compiler == "msvc":
+            self.call_vcvarsall_bat()
+
+        build_ext.run(self)
+
+    def call_vcvarsall_bat(self):
+        import struct
+        from distutils._msvccompiler import _get_vc_env
+
+        arch = "x64" if struct.calcsize("P") * 8 == 64 else "x86"
+        vc_env = _get_vc_env(arch)
+        self._compiler_env.update(vc_env)
+
+    def build_extension(self, ext):
+        if not isinstance(ext, Executable):
+            build_ext.build_extension(self, ext)
+            return
+
+        cmd = ["make"] + [ext.target]
+        log.debug("running '{}'".format(" ".join(cmd)))
+        if not self.dry_run:
+            env = self._compiler_env.copy()
+            if ext.env:
+                env.update(ext.env)
+            if self.force:
+                subprocess.call(["make", "clean"], cwd=ext.cwd, env=env)
+            p = subprocess.run(cmd, cwd=ext.cwd, env=env)
+            if p.returncode != 0:
+                from distutils.errors import DistutilsExecError
+
+                raise DistutilsExecError("running 'make' failed")
+
+        exe_fullpath = os.path.join(ext.output_dir, ext.target)
+
+        dest_path = self.get_ext_fullpath(ext.name)
+        mkpath(os.path.dirname(dest_path), verbose=self.verbose, dry_run=self.dry_run)
+
+        copy_file(exe_fullpath, dest_path, verbose=self.verbose, dry_run=self.dry_run)
+
+
+class CustomEggInfo(egg_info):
+    def run(self):
+        # make sure the ttfautohint source is downloaded before creating sdist manifest
+        self.run_command("download")
+        egg_info.run(self)
+
+
+class CustomClean(clean):
+    def run(self):
+        clean.run(self)
+        # also remove downloaded sources and all build byproducts
+        for path in ["src/c/ttfautohint", "src/c/freetype", "src/c/harfbuzz"]:
+            if os.path.isdir(path):
+                remove_tree(path, self.verbose, self.dry_run)
+            else:
+                log.info("'{}' does not exist -- can't clean it".format(path))
+        if not self.dry_run:
+            subprocess.call(["make", "clean"], cwd="src/c")
+
+
+ttfautohint_exe = Executable(
+    "ttfautohint.ttfautohint",
+    cwd="src/c",
+    output_dir=os.path.join("build/local/bin"),
+)
 
 cmdclass = {}
 ext_modules = []
-if os.environ.get("TTFAUTOHINTPY_BUNDLE_DLL", "0") in {"1", "yes", "true"}:
-    try:
-        from wheel.bdist_wheel import bdist_wheel
-    except ImportError:
-        print("warning: wheel package is not installed", file=sys.stderr)
-    else:
-        class UniversalBdistWheel(bdist_wheel):
+for env_var in ("TTFAUTOHINTPY_BUNDLE_DLL", "TTFAUTOHINTPY_BUNDLE_EXE"):
+    if os.environ.get(env_var, "0") in {"1", "yes", "true"}:
+        cmdclass["bdist_wheel"] = UniversalBdistWheel
+        cmdclass["download"] = Download
+        cmdclass["build_ext"] = ExecutableBuildExt
+        cmdclass["egg_info"] = CustomEggInfo
+        cmdclass["clean"] = CustomClean
+        ext_modules = [ttfautohint_exe]
 
-            def get_tag(self):
-                return ('py2.py3', 'none',) + bdist_wheel.get_tag(self)[2:]
-
-        cmdclass['bdist_wheel'] = UniversalBdistWheel
-
-
-    class SharedLibrary(Extension):
-
-        if sys.platform == "darwin":
-            suffix = ".dylib"
-        elif sys.platform == "win32":
-            suffix = ".dll"
-        else:
-            suffix = ".so"
-
-        def __init__(self, name, cmd, cwd=".", output_dir=".", env=None):
-            Extension.__init__(self, name, sources=[])
-            self.cmd = cmd
-            self.cwd = os.path.normpath(cwd)
-            self.output_dir = os.path.normpath(output_dir)
-            self.env = env or dict(os.environ)
-
-
-    class SharedLibBuildExt(build_ext):
-
-        def get_ext_filename(self, ext_name):
-            for ext in self.extensions:
-                if isinstance(ext, SharedLibrary):
-                    return os.path.join(*ext_name.split('.')) + ext.suffix
-            return build_ext.get_ext_filename(self, ext_name)
-
-        def build_extension(self, ext):
-            if not isinstance(ext, SharedLibrary):
-                build_ext.build_extension(self, ext)
-                return
-
-            log.info("running '%s'" % " ".join(ext.cmd))
-            if not self.dry_run:
-                rv = subprocess.Popen(ext.cmd,
-                                      cwd=ext.cwd,
-                                      env=ext.env,
-                                      shell=True).wait()
-                if rv != 0:
-                    sys.exit(rv)
-
-            lib_name = ext.name.split(".")[-1] + ext.suffix
-            lib_fullpath = os.path.join(ext.output_dir, lib_name)
-
-            dest_path = self.get_ext_fullpath(ext.name)
-            mkpath(os.path.dirname(dest_path),
-                   verbose=self.verbose, dry_run=self.dry_run)
-
-            copy_file(lib_fullpath, dest_path,
-                      verbose=self.verbose, dry_run=self.dry_run)
-
-
-    cmdclass['build_ext'] = SharedLibBuildExt
-
-    env = dict(os.environ)
-    if sys.platform == "win32":
-        import struct
-
-        msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
-        msys2_bin = os.path.join(msys2_root, "usr", "bin")
-        # select mingw32 or mingw64 toolchain depending on python architecture
-        bits = struct.calcsize("P") * 8
-        toolchain = "mingw%d" % bits
-        mingw_bin = os.path.join(msys2_root, toolchain, "bin")
-        PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
-        env.update(
-            PATH=PATH,
-            MSYSTEM=toolchain.upper(),
-            # this tells bash to keep the current working directory
-            CHERE_INVOKING="1",
-        )
-        # we need to run make from an msys2 login shell.
-        # We do 'make clean' because libraries are built in-place and we want
-        # to make sure previous builds don't leave anything behind.
-        cmd = ["bash", "-lc", "make clean all"]
-    else:
-        cmd = ["make", "clean", "all"]
-
-    libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
-                                   cmd=cmd,
-                                   cwd="src/c",
-                                   env=env,
-                                   output_dir="build/local/lib")
-    ext_modules.append(libttfautohint)
-
-
-with open("README.rst", "r", encoding="utf-8") as readme:
+with open("README.md", "r", encoding="utf-8") as readme:
     long_description = readme.read()
 
 setup(
-    name="ttfautohint-py",
-    use_scm_version=True,
-    description=("Python wrapper for ttfautohint, "
-                 "a free auto-hinter for TrueType fonts"),
+    name="ttfautohint",
+    use_scm_version={"write_to": "src/python/ttfautohint/_version.py"},
+    description=("Python wrapper for ttfautohint"),
     long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Cosimo Lupo",
     author_email="cosimo@anthrotype.com",
     url="https://github.com/fonttools/ttfautohint-py",
@@ -127,9 +291,11 @@ setup(
     package_dir={"": "src/python"},
     packages=find_packages("src/python"),
     ext_modules=ext_modules,
-    zip_safe=False,
+    zip_safe=any(ext_modules),
     cmdclass=cmdclass,
-    setup_requires=['setuptools_scm'],
+    setup_requires=["setuptools_scm"],
+    extras_require={"testing": ["pytest", "coverage", "fontTools"]},
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
@@ -140,7 +306,6 @@ setup(
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Topic :: Text Processing :: Fonts",
         "Topic :: Multimedia :: Graphics",

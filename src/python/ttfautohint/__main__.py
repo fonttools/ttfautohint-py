@@ -1,4 +1,12 @@
 import sys
-from ttfautohint.cli import main
+from ttfautohint import run
 
-sys.exit(main())
+
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+    return run(args).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

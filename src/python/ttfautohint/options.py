@@ -1,9 +1,9 @@
 import sys
 import os
+import tempfile
 from collections import OrderedDict
-from ttfautohint._compat import (
-    ensure_binary, ensure_text, basestring, open, IntEnum,
-)
+from enum import IntEnum
+from ttfautohint._compat import ensure_binary, ensure_text
 
 USER_OPTIONS = dict(
     in_file=None,
@@ -14,7 +14,6 @@ USER_OPTIONS = dict(
     reference_file=None,
     reference_buffer=None,
     reference_index=0,
-    reference_name=None,
     hinting_range_min=8,
     hinting_range_max=50,
     hinting_limit=200,
@@ -27,7 +26,7 @@ USER_OPTIONS = dict(
     fallback_script="none",
     fallback_scaling=False,
     symbol=False,
-    fallback_stem_width=0,
+    fallback_stem_width=None,
     ignore_restrictions=False,
     family_suffix=None,
     detailed_info=False,
@@ -39,19 +38,23 @@ USER_OPTIONS = dict(
     verbose=False,
 )
 
-StemWidthMode = IntEnum("StemWidthMode",
-                        [
-                            "NATURAL",    # -1
-                            "QUANTIZED",  # 0
-                            "STRONG",     # 1
-                        ],
-                        start=-1)
+StemWidthMode = IntEnum(
+    "StemWidthMode",
+    [
+        "NATURAL",  # -1
+        "QUANTIZED",  # 0
+        "STRONG",  # 1
+    ],
+    start=-1,
+)
 
-STEM_WIDTH_MODE_OPTIONS = OrderedDict([
-    ("gray_stem_width_mode", StemWidthMode.QUANTIZED),
-    ("gdi_cleartype_stem_width_mode", StemWidthMode.STRONG),
-    ("dw_cleartype_stem_width_mode", StemWidthMode.QUANTIZED),
-])
+STEM_WIDTH_MODE_OPTIONS = OrderedDict(
+    [
+        ("gray_stem_width_mode", StemWidthMode.QUANTIZED),
+        ("gdi_cleartype_stem_width_mode", StemWidthMode.STRONG),
+        ("dw_cleartype_stem_width_mode", StemWidthMode.QUANTIZED),
+    ]
+)
 
 USER_OPTIONS.update(STEM_WIDTH_MODE_OPTIONS)
 
@@ -62,37 +65,14 @@ STRONG_STEM_WIDTH_OPTIONS = dict(
     dw_cleartype_strong_stem_width=False,
 )
 
-PRIVATE_OPTIONS = frozenset([
-    "in_buffer_len",
-    "control_buffer_len",
-    "reference_buffer_len",
-    "out_buffer",
-    "out_buffer_len",
-    "error_string",
-    "alloc_func",
-    "free_func",
-    "info_callback",
-    "info_post_callback",
-    "info_callback_data",
-    "progress_callback",
-    "progress_callback_data",
-    "error_callback",
-    "error_callback_data",
-])
-
-ALL_OPTIONS = frozenset(USER_OPTIONS) | PRIVATE_OPTIONS
-
-# used when the control file does not have a name on the filesystem
-CONTROL_NAME_FALLBACK = u"<control-instructions>"
-
 
 def validate_options(kwargs):
     opts = {k: kwargs.pop(k, USER_OPTIONS[k]) for k in USER_OPTIONS}
     if kwargs:
         raise TypeError(
-            "unknown keyword argument%s: %s" % (
-                "s" if len(kwargs) > 1 else "",
-                ", ".join(repr(k) for k in kwargs)))
+            "unknown keyword argument%s: %s"
+            % ("s" if len(kwargs) > 1 else "", ", ".join(repr(k) for k in kwargs))
+        )
 
     if opts["no_info"] and opts["detailed_info"]:
         raise ValueError("no_info and detailed_info are mutually exclusive")
@@ -109,73 +89,39 @@ def validate_options(kwargs):
             with open(in_file, "rb") as f:
                 in_buffer = f.read()
     if not isinstance(in_buffer, bytes):
-        raise TypeError("in_buffer type must be bytes, not %s"
-                        % type(in_buffer).__name__)
-    opts['in_buffer'] = in_buffer
-    opts['in_buffer_len'] = len(in_buffer)
+        raise TypeError(
+            "in_buffer type must be bytes, not %s" % type(in_buffer).__name__
+        )
+    opts["in_buffer"] = in_buffer
 
-    control_file = opts.pop('control_file')
-    control_buffer = opts.pop('control_buffer')
-    if control_file is not None:
-        if control_buffer is not None:
-            raise ValueError(
-                "control_file and control_buffer are mutually exclusive")
-        try:
-            control_buffer = control_file.read()
-        except AttributeError:
-            with open(control_file, "rt", encoding="utf-8") as f:
-                control_buffer = f.read()
-            opts["control_name"] = control_file
-        else:
-            try:
-                opts["control_name"] = control_file.name
-            except AttributeError:
-                pass
+    control_file = opts.pop("control_file")
+    control_buffer = opts.pop("control_buffer")
     if control_buffer is not None:
-        opts['control_buffer'] = ensure_binary(control_buffer, "utf-8")
-        opts['control_buffer_len'] = len(control_buffer)
-    if "control_name" in opts:
-        opts["control_name"] = ensure_text(
-            opts["control_name"], encoding=sys.getfilesystemencoding())
-    else:
-        opts["control_name"] = CONTROL_NAME_FALLBACK
+        if control_file is not None:
+            raise ValueError("control_file and control_buffer are mutually exclusive")
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(ensure_binary(control_buffer, "utf-8"))
+        control_file = tmp.name
+    if control_file is not None:
+        opts["control_file"] = control_file
 
-    reference_file = opts.pop('reference_file')
-    reference_buffer = opts.pop('reference_buffer')
-    if reference_file is not None:
-        if reference_buffer is not None:
-            raise ValueError(
-                "reference_file and reference_buffer are mutually exclusive")
-        try:
-            reference_buffer = reference_file.read()
-        except AttributeError:
-            with open(reference_file, "rb") as f:
-                reference_buffer = f.read()
-            if opts["reference_name"] is None:
-                opts["reference_name"] = reference_file
-        else:
-            if opts["reference_name"] is None:
-                try:
-                    opts["reference_name"] = reference_file.name
-                except AttributeError:
-                    pass
+    reference_file = opts.pop("reference_file")
+    reference_buffer = opts.pop("reference_buffer")
     if reference_buffer is not None:
+        if reference_file is not None:
+            raise ValueError(
+                "reference_file and reference_buffer are mutually exclusive"
+            )
         if not isinstance(reference_buffer, bytes):
-            raise TypeError("reference_buffer type must be bytes, not %s"
-                            % type(reference_buffer).__name__)
-        opts['reference_buffer'] = reference_buffer
-        opts['reference_buffer_len'] = len(reference_buffer)
-    if opts["reference_name"] is not None:
-        opts["reference_name"] = ensure_binary(
-            opts["reference_name"], encoding=sys.getfilesystemencoding())
-
-    for key in ('default_script', 'fallback_script',
-                'x_height_snapping_exceptions'):
-        opts[key] = ensure_binary(opts[key])
-
-    if opts['epoch'] is not None:
-        from ctypes import c_ulonglong
-        opts['epoch'] = c_ulonglong(opts['epoch'])
+            raise TypeError(
+                "reference_buffer type must be bytes, not %s"
+                % type(reference_buffer).__name__
+            )
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(ensure_binary(reference_buffer, "utf-8"))
+        reference_file = tmp.name
+    if reference_file is not None:
+        opts["reference_file"] = reference_file
 
     if opts["family_suffix"] is not None:
         opts["family_suffix"] = ensure_text(opts["family_suffix"])
@@ -187,57 +133,102 @@ def validate_options(kwargs):
     return opts
 
 
-def format_varargs(**options):
-    items = sorted((k, v) for k, v in options.items()
-                   if k in ALL_OPTIONS and v is not None)
-    format_string = b", ".join(ensure_binary(k.replace("_", "-"))
-                               for k, v in items)
-    values = tuple(v for k, v in items)
-    return format_string, values
+# CLI options that have different names from the corresponding ttfautohint()
+# keyword parameters.
+SPECIAL_OPT_NAMES = {
+    "reference_file": "reference",
+    "hint_composites": "composites",
+    "TTFA_info": "ttfa-table",
+}
+
+
+def format_kwargs(**options):
+    # convert keyword parameters to CLI flags suitable for ttfautohint command line
+    result = []
+    modes = {}
+    for key, value in options.items():
+        if key not in USER_OPTIONS:
+            continue
+        if value is None:
+            continue
+        if key in STEM_WIDTH_MODE_OPTIONS:
+            modes[key] = value
+            continue
+        opt = f"--{SPECIAL_OPT_NAMES.get(key, key).replace('_', '-').lower()}"
+        if isinstance(value, bool):
+            if value:
+                result.append(opt)
+        elif isinstance(value, (int, float, str)):
+            if value != USER_OPTIONS[key]:
+                result.append(opt)
+                result.append(str(value))
+        else:
+            raise TypeError(f"{key}: {type(value)}")
+    if modes:
+        result.extend(["--stem-width-mode", format_stem_width_modes(**modes)])
+    return result
 
 
 def strong_stem_width(s):
     if len(s) > 3:
         import argparse
-        raise argparse.ArgumentTypeError(
-            "string can only contain up to 3 letters")
+
+        raise argparse.ArgumentTypeError("string can only contain up to 3 letters")
     valid = {
         "g": "gray_stem_width_mode",
         "G": "gdi_cleartype_stem_width_mode",
-        "D": "dw_cleartype_stem_width_mode"}
+        "D": "dw_cleartype_stem_width_mode",
+    }
     chars = set(s)
     invalid = chars - set(valid)
     if invalid:
         import argparse
+
         raise argparse.ArgumentTypeError(
-            "invalid value: %s" % ", ".join(
-                repr(v) for v in sorted(invalid)))
+            "invalid value: %s" % ", ".join(repr(v) for v in sorted(invalid))
+        )
     result = {}
     for char, opt_name in valid.items():
         is_strong = char in chars
-        result[opt_name] = (StemWidthMode.STRONG if is_strong
-                            else StemWidthMode.QUANTIZED)
+        result[opt_name] = (
+            StemWidthMode.STRONG if is_strong else StemWidthMode.QUANTIZED
+        )
     return result
 
 
 def stem_width_mode(s):
     if len(s) != 3:
         import argparse
+
         raise argparse.ArgumentTypeError(
-            "Stem width mode string must consist of exactly three letters")
-    modes = {k[0].lower(): v
-             for k, v in StemWidthMode.__members__.items()}
+            "Stem width mode string must consist of exactly three letters"
+        )
+    modes = {k[0].lower(): v for k, v in StemWidthMode.__members__.items()}
     result = {}
     for i, option in enumerate(STEM_WIDTH_MODE_OPTIONS):
         m = s[i]
         if m not in modes:
             import argparse
+
             letters = sorted(repr(k) for k in modes)
             raise argparse.ArgumentTypeError(
                 "Stem width mode letter for %s must be %s, or %s"
-                % (option, ", ".join(letters[:-1]), letters[-1]))
+                % (option, ", ".join(letters[:-1]), letters[-1])
+            )
         result[option] = modes[m]
     return result
+
+
+def format_stem_width_modes(
+    gray_stem_width_mode,
+    gdi_cleartype_stem_width_mode,
+    dw_cleartype_stem_width_mode,
+):
+    return (
+        gray_stem_width_mode.name[0].lower()
+        + gdi_cleartype_stem_width_mode.name[0].lower()
+        + dw_cleartype_stem_width_mode.name[0].lower()
+    )
 
 
 def stdin_or_input_path_type(s):
@@ -275,7 +266,7 @@ def _windows_cmdline2list(cmdline):
     Borrowed from Jython source code:
     https://github.com/jython/jython/blob/50729e6/Lib/subprocess.py#L668-L722
     """
-    whitespace = ' \t'
+    whitespace = " \t"
     # count of preceding '\'
     bs_count = 0
     in_quotes = False
@@ -286,10 +277,10 @@ def _windows_cmdline2list(cmdline):
         if ch in whitespace and not in_quotes:
             if arg:
                 # finalize arg and reset
-                argv.append(''.join(arg))
+                argv.append("".join(arg))
                 arg = []
             bs_count = 0
-        elif ch == '\\':
+        elif ch == "\\":
             arg.append(ch)
             bs_count += 1
         elif ch == '"':
@@ -297,13 +288,13 @@ def _windows_cmdline2list(cmdline):
                 # Even number of '\' followed by a '"'. Place one
                 # '\' for every pair and treat '"' as a delimiter
                 if bs_count:
-                    del arg[-(bs_count / 2):]
+                    del arg[-(bs_count / 2) :]
                 in_quotes = not in_quotes
             else:
                 # Odd number of '\' followed by a '"'. Place one '\'
                 # for every pair and treat '"' as an escape sequence
                 # by the remaining '\'
-                del arg[-(bs_count / 2 + 1):]
+                del arg[-(bs_count / 2 + 1) :]
                 arg.append(ch)
             bs_count = 0
         else:
@@ -313,9 +304,25 @@ def _windows_cmdline2list(cmdline):
 
     # A single trailing '"' delimiter yields an empty arg
     if arg or in_quotes:
-        argv.append(''.join(arg))
+        argv.append("".join(arg))
 
     return argv
+
+
+def _parse_ttfautohint_version_string():
+    from ttfautohint import run
+
+    result = run(["--version"], capture_output=True, check=True)
+
+    output = result.stdout
+    if not output:
+        raise ValueError("Could not parse ttfautohint --version")
+
+    first_line = result.stdout.decode("utf-8").splitlines()[0]
+    if not first_line.startswith("ttfautohint "):
+        raise ValueError(f"ttfautohint --version has unexpected format: {first_line}")
+
+    return first_line[12:]
 
 
 def parse_args(args=None, splitfunc=None):
@@ -334,22 +341,32 @@ def parse_args(args=None, splitfunc=None):
     a `None` value is returned.
     """
     import argparse
-    from ttfautohint import __version__, libttfautohint
+    from ttfautohint import __version__
     from ttfautohint.cli import USAGE, DESCRIPTION, EPILOG
+    import warnings
+
+    warnings.warn(
+        "`ttfautohint.options.parse_args` is deprecated and will be removed "
+        "in a future release. Use `ttfautohint.run` instead.",
+        DeprecationWarning,
+    )
 
     version_string = "ttfautohint-py %s (libttfautohint %s)" % (
-        __version__, libttfautohint.version_string)
+        __version__,
+        _parse_ttfautohint_version_string(),
+    )
 
     if args is None:
         capture_sys_exit = False
     else:
         capture_sys_exit = True
-        if isinstance(args, basestring):
+        if isinstance(args, str):
             if splitfunc is None:
                 if sys.platform == "win32":
                     splitfunc = _windows_cmdline2list
                 else:
                     import shlex
+
                     splitfunc = shlex.split
             args = splitfunc(args)
 
@@ -361,119 +378,222 @@ def parse_args(args=None, splitfunc=None):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "in_file", nargs="?", metavar="IN-FILE", default="-",
+        "in_file",
+        nargs="?",
+        metavar="IN-FILE",
+        default="-",
         type=stdin_or_input_path_type,
-        help="input file (default: standard input)")
+        help="input file (default: standard input)",
+    )
     parser.add_argument(
-        "out_file", nargs="?", metavar="OUT-FILE", default="-",
+        "out_file",
+        nargs="?",
+        metavar="OUT-FILE",
+        default="-",
         type=stdout_or_output_path_type,
-        help="output file (default: standard output)")
+        help="output file (default: standard output)",
+    )
     parser.add_argument(
-        "--debug", action="store_true", help="print debugging information")
+        "--debug", action="store_true", help="print debugging information"
+    )
 
     stem_width_group = parser.add_mutually_exclusive_group(required=False)
     stem_width_group.add_argument(
-        "-a", "--stem-width-mode", type=stem_width_mode, metavar="S",
+        "-a",
+        "--stem-width-mode",
+        type=stem_width_mode,
+        metavar="S",
         default=STEM_WIDTH_MODE_OPTIONS,
-        help=("select stem width mode for grayscale, GDI ClearType, and DW "
-              "ClearType, where S is a string of three letters with possible "
-              "values 'n' for natural, 'q' for quantized, and 's' for strong "
-              "(default: qsq)"))
+        help=(
+            "select stem width mode for grayscale, GDI ClearType, and DW "
+            "ClearType, where S is a string of three letters with possible "
+            "values 'n' for natural, 'q' for quantized, and 's' for strong "
+            "(default: qsq)"
+        ),
+    )
     stem_width_group.add_argument(  # deprecated
-        "-w", "--strong-stem-width", type=strong_stem_width, metavar="S",
-        help=argparse.SUPPRESS)
+        "-w",
+        "--strong-stem-width",
+        type=strong_stem_width,
+        metavar="S",
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
-        "-c", "--composites", dest="hint_composites", action="store_true",
-        help="hint glyph composites also")
+        "-c",
+        "--composites",
+        dest="hint_composites",
+        action="store_true",
+        help="hint glyph composites also",
+    )
+    parser.add_argument("-d", "--dehint", action="store_true", help="remove all hints")
     parser.add_argument(
-        "-d", "--dehint", action="store_true", help="remove all hints")
-    parser.add_argument(
-        "-D", "--default-script", metavar="SCRIPT",
+        "-D",
+        "--default-script",
+        metavar="SCRIPT",
         default=USER_OPTIONS["default_script"],
-        help="set default OpenType script (default: %(default)s)")
+        help="set default OpenType script (default: %(default)s)",
+    )
     parser.add_argument(
-        "-f", "--fallback-script", metavar="SCRIPT",
+        "-f",
+        "--fallback-script",
+        metavar="SCRIPT",
         default=USER_OPTIONS["fallback_script"],
-        help="set fallback script (default: %(default)s)")
+        help="set fallback script (default: %(default)s)",
+    )
     parser.add_argument(
-        "-F", "--family-suffix", metavar="SUFFIX",
-        help="append SUFFIX to the family name string(s) in the `name' table")
+        "-F",
+        "--family-suffix",
+        metavar="SUFFIX",
+        help="append SUFFIX to the family name string(s) in the `name' table",
+    )
     parser.add_argument(
-        "-G", "--hinting-limit", type=int, metavar="PPEM",
+        "-G",
+        "--hinting-limit",
+        type=int,
+        metavar="PPEM",
         default=USER_OPTIONS["hinting_limit"],
-        help=("switch off hinting above this PPEM value (default: "
-              "%(default)s); value 0 means no limit"))
+        help=(
+            "switch off hinting above this PPEM value (default: "
+            "%(default)s); value 0 means no limit"
+        ),
+    )
     parser.add_argument(
-        "-H", "--fallback-stem-width", type=int, metavar="UNITS",
+        "-H",
+        "--fallback-stem-width",
+        type=int,
+        metavar="UNITS",
         default=USER_OPTIONS["fallback_stem_width"],
-        help=("set fallback stem width (default: %(default)s font units at "
-              "2048 UPEM)"))
+        help=("set fallback stem width (default: 50 font units at 2048 UPEM)"),
+    )
     parser.add_argument(
-        "-i", "--ignore-restrictions", action="store_true",
-        help="override font license restrictions")
+        "-i",
+        "--ignore-restrictions",
+        action="store_true",
+        help="override font license restrictions",
+    )
     parser.add_argument(
-        "-I", "--detailed-info", action="store_true",
-        help=("add detailed ttfautohint info to the version string(s) in "
-              "the `name' table"))
+        "-I",
+        "--detailed-info",
+        action="store_true",
+        help=(
+            "add detailed ttfautohint info to the version string(s) in "
+            "the `name' table"
+        ),
+    )
     parser.add_argument(
-        "-l", "--hinting-range-min", type=int, metavar="PPEM",
+        "-l",
+        "--hinting-range-min",
+        type=int,
+        metavar="PPEM",
         default=USER_OPTIONS["hinting_range_min"],
-        help="the minimum PPEM value for hint sets (default: %(default)s)")
+        help="the minimum PPEM value for hint sets (default: %(default)s)",
+    )
     parser.add_argument(
-        "-m", "--control-file", metavar="FILE",
-        help="get control instructions from FILE")
+        "-m",
+        "--control-file",
+        metavar="FILE",
+        help="get control instructions from FILE",
+    )
     parser.add_argument(
-        "-n", "--no-info", action="store_true",
-        help=("don't add ttfautohint info to the version string(s) in the "
-              "`name' table"))
+        "-n",
+        "--no-info",
+        action="store_true",
+        help=(
+            "don't add ttfautohint info to the version string(s) in the " "`name' table"
+        ),
+    )
     parser.add_argument(
-        "-p", "--adjust-subglyphs", action="store_true",
-        help="handle subglyph adjustments in exotic fonts")
+        "-p",
+        "--adjust-subglyphs",
+        action="store_true",
+        help="handle subglyph adjustments in exotic fonts",
+    )
     parser.add_argument(
-        "-r", "--hinting-range-max", type=int, metavar="PPEM",
+        "-r",
+        "--hinting-range-max",
+        type=int,
+        metavar="PPEM",
         default=USER_OPTIONS["hinting_range_max"],
-        help="the maximum PPEM value for hint sets (default: %(default)s)")
+        help="the maximum PPEM value for hint sets (default: %(default)s)",
+    )
     parser.add_argument(
-        "-R", "--reference", dest="reference_file", metavar="FILE",
-        help="derive blue zones from reference font FILE")
+        "-R",
+        "--reference",
+        dest="reference_file",
+        metavar="FILE",
+        help="derive blue zones from reference font FILE",
+    )
     parser.add_argument(
-        "-s", "--symbol", action="store_true",
-        help="input is symbol font")
+        "-s", "--symbol", action="store_true", help="input is symbol font"
+    )
     parser.add_argument(
-        "-S", "--fallback-scaling", action="store_true",
-        help="use fallback scaling, not hinting")
+        "-S",
+        "--fallback-scaling",
+        action="store_true",
+        help="use fallback scaling, not hinting",
+    )
     parser.add_argument(
-        "-t", "--ttfa-table", action="store_true", dest="TTFA_info",
-        help="add TTFA information table")
+        "-t",
+        "--ttfa-table",
+        action="store_true",
+        dest="TTFA_info",
+        help="add TTFA information table",
+    )
     parser.add_argument(
-        "-T", "--ttfa-info", dest="show_TTFA_info", action="store_true",
-        help="display TTFA table in IN-FILE and exit")
+        "-T",
+        "--ttfa-info",
+        dest="show_TTFA_info",
+        action="store_true",
+        help="display TTFA table in IN-FILE and exit",
+    )
     parser.add_argument(
-        "-v", "--verbose", action="store_true",
-        help="show progress information")
+        "-v", "--verbose", action="store_true", help="show progress information"
+    )
     parser.add_argument(
-        "-V", "--version", action="version",
+        "-V",
+        "--version",
+        action="version",
         version=version_string,
-        help="print version information and exit")
+        help="print version information and exit",
+    )
     parser.add_argument(
-        "-W", "--windows-compatibility", action="store_true",
-        help=("add blue zones for `usWinAscent' and `usWinDescent' to avoid "
-              "clipping"))
+        "-W",
+        "--windows-compatibility",
+        action="store_true",
+        help=(
+            "add blue zones for `usWinAscent' and `usWinDescent' to avoid " "clipping"
+        ),
+    )
     parser.add_argument(
-        "-x", "--increase-x-height", type=int, metavar="PPEM",
+        "-x",
+        "--increase-x-height",
+        type=int,
+        metavar="PPEM",
         default=USER_OPTIONS["increase_x_height"],
-        help=("increase x height for sizes in the range 6<=PPEM<=N; value "
-              "0 switches off this feature (default: %(default)s)"))
+        help=(
+            "increase x height for sizes in the range 6<=PPEM<=N; value "
+            "0 switches off this feature (default: %(default)s)"
+        ),
+    )
     parser.add_argument(
-        "-X", "--x-height-snapping-exceptions", metavar="STRING",
+        "-X",
+        "--x-height-snapping-exceptions",
+        metavar="STRING",
         default=USER_OPTIONS["x_height_snapping_exceptions"],
-        help=('specify a comma-separated list of x-height snapping exceptions'
-              ', for example "-9, 13-17, 19" (default: "%(default)s")'))
+        help=(
+            "specify a comma-separated list of x-height snapping exceptions"
+            ', for example "-9, 13-17, 19" (default: "%(default)s")'
+        ),
+    )
     parser.add_argument(
-        "-Z", "--reference-index", type=int, metavar="NUMBER",
+        "-Z",
+        "--reference-index",
+        type=int,
+        metavar="NUMBER",
         default=USER_OPTIONS["reference_index"],
-        help="face index of reference font (default: %(default)s)")
+        help="face index of reference font (default: %(default)s)",
+    )
 
     try:
         options = vars(parser.parse_args(args))
@@ -483,8 +603,9 @@ def parse_args(args=None, splitfunc=None):
         raise
 
     # if either input/output are interactive, print help and exit
-    if (not capture_sys_exit and
-            (options["in_file"] is None or options["out_file"] is None)):
+    if not capture_sys_exit and (
+        options["in_file"] is None or options["out_file"] is None
+    ):
         parser.print_help()
         parser.exit(1)
 
@@ -495,8 +616,10 @@ def parse_args(args=None, splitfunc=None):
             options["epoch"] = int(source_date_epoch)
         except ValueError:
             import warnings
+
             warnings.warn(
-                UserWarning("invalid SOURCE_DATE_EPOCH: %r" % source_date_epoch))
+                UserWarning("invalid SOURCE_DATE_EPOCH: %r" % source_date_epoch)
+            )
 
     if options.pop("show_TTFA_info"):
         # TODO use fonttools to dump TTFA table?
@@ -506,8 +629,8 @@ def parse_args(args=None, splitfunc=None):
     strong_stem_width_options = options.pop("strong_stem_width")
     if strong_stem_width_options:
         import warnings
-        warnings.warn(
-            UserWarning("Option '-w' is deprecated! Use option '-a' instead"))
+
+        warnings.warn(UserWarning("Option '-w' is deprecated! Use option '-a' instead"))
         stem_width_options = strong_stem_width_options
     options.update(stem_width_options)
 

@@ -1,147 +1,94 @@
-from __future__ import print_function, division, absolute_import
-
-from ctypes import (
-    cdll, POINTER, c_char, c_char_p, c_size_t, c_int, byref,
-)
-from ctypes.util import find_library
-
-from io import open
-import sys
+import io
 import os
+import subprocess
+import sys
+from importlib.resources import as_file, files, is_resource
 
 from ttfautohint._version import __version__
-from ttfautohint import memory
-from ttfautohint.options import validate_options, format_varargs, StemWidthMode
-from ttfautohint import info
-from ttfautohint import progress
-from ttfautohint import errors
 from ttfautohint.errors import TAError
-from ttfautohint import cli
+from ttfautohint.options import validate_options, format_kwargs, StemWidthMode
 
 
-__all__ = ["ttfautohint", "TAError", "StemWidthMode"]
+__all__ = ["__version__", "ttfautohint", "TAError", "StemWidthMode", "run"]
 
 
-class TALibrary(object):
+EXECUTABLE = "ttfautohint"
+if sys.platform == "win32":
+    EXECUTABLE += ".exe"
 
-    def __init__(self, path=None, **kwargs):
-        """ Initialize a new handle to the libttfautohint shared library.
-        If no path is provided, by default the embedded shared library that
-        comes with the binary wheel is loaded first. If this is not found,
-        then `ctypes.util.find_library` function is used to search in the
-        system's default search paths.
-        """
-        if path is None:
-            if sys.platform == "win32":
-                name = "libttfautohint.dll"
-            elif sys.platform == "darwin":
-                name = "libttfautohint.dylib"
-            else:
-                name = "libttfautohint.so"
-            path = os.path.join(os.path.dirname(__file__), name)
-            if not os.path.isfile(path):
-                path = find_library("ttfautohint")
-                if not path:
-                    raise OSError("cannot find '%s'" % name)
-        self.lib = lib = cdll.LoadLibrary(path, **kwargs)
-        self.path = path
+HAS_BUNDLED_EXE = None
 
-        lib.TTF_autohint_version.argtypes = [POINTER(c_int)] * 3
-        lib.TTF_autohint_version.restype = None
-        _major, _minor, _revision = c_int(), c_int(), c_int()
-        lib.TTF_autohint_version(_major, _minor, _revision)
-        self.major = _major.value
-        self.minor = _minor.value
-        self.revision = _revision.value
 
-        lib.TTF_autohint_version_string.restype = c_char_p
-        version_string = lib.TTF_autohint_version_string().decode('ascii')
-        self.version_string = version_string
+def _has_bundled_exe():
+    global HAS_BUNDLED_EXE
 
-        # In the M1 ABI, ctypes counts the number of fixed arguments
-        # when building the varargs array. See https://bugs.python.org/issue42880
-        lib.TTF_autohint.argtypes = [c_char_p]
+    if HAS_BUNDLED_EXE is None:
+        HAS_BUNDLED_EXE = is_resource(__name__, EXECUTABLE)
 
-    def _build_info_data(self, options):
-        # as a side effect, these arguments are popped from the options dict
-        # as they are not part of TTF_autohint API
-        family_suffix = options.pop("family_suffix")
-        no_info = options.pop("no_info")
-        detailed_info = options.pop("detailed_info")
-        if no_info:
-            info_string = None
+    return HAS_BUNDLED_EXE
+
+
+def run(args, **kwargs):
+    """Run the 'ttfautohint' executable with the list of positional arguments.
+
+    All keyword arguments are forwarded to subprocess.run function.
+
+    The bundled copy of the 'ttfautohint' executable is tried first; if this
+    was not included at installation, the version which is on $PATH is used.
+
+    Return:
+        subprocess.CompletedProcess object with the following attributes:
+        args, returncode, stdout, stderr.
+    """
+    if _has_bundled_exe():
+        with as_file(files(__name__).joinpath(EXECUTABLE)) as bundled_exe:
+            return subprocess.run([str(bundled_exe)] + list(args), **kwargs)
+    else:
+        return subprocess.run([EXECUTABLE] + list(args), **kwargs)
+
+
+# TODO: add docstring
+def ttfautohint(**kwargs):
+    options = validate_options(kwargs)
+
+    in_buffer = options.pop("in_buffer")
+    out_file = options.pop("out_file")
+
+    capture_output = True
+    stdout = None
+    should_close_stdout = False
+    if out_file is not None:
+        if isinstance(out_file, (str, bytes, os.PathLike)):
+            stdout, out_file = open(out_file, "w"), None
+            should_close_stdout = True
+            capture_output = False
         else:
-            info_string = info.build_info_string(self.version_string,
-                                                 detailed_info, **options)
-        return info.InfoData(info_string, family_suffix)
-
-    def ttfautohint(self, **kwargs):
-        options = validate_options(kwargs)
-
-        info_data = self._build_info_data(options)
-
-        if info_data.family_suffix:
-            info_post_callback = info.info_post_callback
-        else:
-            info_post_callback = None
-
-        if options.pop("verbose"):
-            # by default, it prints to stderr like ttfautohint.exe
-            # TODO: figure out a way to implement progress using logging?
-            printer = progress.ProgressPrinter()
-            progress_callback = printer.callback
-        else:
-            progress_callback = None
-        progress_callback_data = progress.ProgressData()
-
-        error_callback = errors.error_callback
-        control_name = options.pop("control_name", None)
-        error_callback_data = errors.ErrorData(control_name)
-
-        # pop 'out_file' from options dict since we use 'out_buffer'
-        out_file = options.pop('out_file')
-
-        out_buffer_p = POINTER(c_char)()
-        out_buffer_len = c_size_t(0)
-
-        option_keys, option_values = format_varargs(
-            out_buffer=byref(out_buffer_p),
-            out_buffer_len=byref(out_buffer_len),
-            alloc_func=memory.alloc_callback,
-            free_func=memory.free_callback,
-            info_callback=info.info_callback,
-            info_post_callback=info_post_callback,
-            info_callback_data=byref(info_data),
-            progress_callback=progress_callback,
-            progress_callback_data=byref(progress_callback_data),
-            error_callback=error_callback,
-            error_callback_data=byref(error_callback_data),
-            **options
-        )
-
-        rv = self.lib.TTF_autohint(option_keys, *option_values)
-        if rv:
-            raise TAError(rv, **error_callback_data.kwargs)
-
-        assert out_buffer_len.value
-
-        data = out_buffer_p[:out_buffer_len.value]
-        assert len(data) == out_buffer_len.value
-
-        if out_buffer_p:
-            memory.free(out_buffer_p)
-            out_buffer_p = None
-
-        if out_file is not None:
             try:
-                return out_file.write(data)
-            except AttributeError:
-                with open(out_file, 'wb') as f:
-                    return f.write(data)
-        else:
-            return data
+                out_file.fileno()
+            except io.UnsupportedOperation:
+                if not out_file.writable():
+                    raise TypeError(f"{out_file} is not writable")
+            else:
+                stdout, out_file = out_file, None
+                capture_output = False
 
+    args = format_kwargs(**options)
 
-libttfautohint = TALibrary()
+    result = run(
+        args,
+        input=in_buffer,
+        capture_output=capture_output,
+        stdout=stdout,
+    )
+    if result.returncode != 0:
+        raise TAError(result.returncode, result.stderr)
 
-ttfautohint = libttfautohint.ttfautohint
+    output_data = result.stdout
+
+    if output_data and out_file is not None:
+        out_file.write(output_data)
+
+    if stdout is not None and should_close_stdout:
+        stdout.close()
+
+    return output_data
