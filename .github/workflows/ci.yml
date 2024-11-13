@@ -15,28 +15,31 @@ jobs:
     name: Build Source Distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
       - name: Build sdist
         run: pipx run build --sdist
       - name: Check metadata
         run: pipx run twine check dist/*.tar.gz
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           path: dist/*.tar.gz
+          name: sdist
 
   build_wheels:
     name: Build wheel ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # macos-13 runners are still x86_64, macos-14 (latest) are arm64; we want to build
+      # the x86_64 wheel on/for x86_64 macs
       matrix:
-        os: [ "ubuntu-20.04", "macos-11", "windows-latest" ]
+        os: [ "ubuntu-latest", "macos-13", "windows-latest" ]
     env:
       CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_DLL=1
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
@@ -44,7 +47,7 @@ jobs:
       CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: x86_64 universal2
       # Building for one python version is enough, since this is a
-      # ctypes-based 'universal binary wheel' (py2.py3-none-*) not
+      # 'universal binary wheel' (py3-none-*) not
       # linked to a specific python version or implementation.
       CIBW_BUILD: "cp39-*"
       CIBW_SKIP: "*-musllinux*"
@@ -54,7 +57,7 @@ jobs:
       # on Windows I need '/d' flag to change both drive and directory at once
       CIBW_TEST_COMMAND_WINDOWS: cd /d {project} && coverage run --parallel-mode -m pytest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
@@ -71,9 +74,9 @@ jobs:
             git
             mingw-w64-i686-ragel
             mingw-w64-x86_64-ragel
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.x"
       - name: Set up environment (Windows)
         if: startsWith(matrix.os, 'windows')
         shell: bash
@@ -98,9 +101,10 @@ jobs:
         run: python -m cibuildwheel --output-dir dist
       - name: Check wheels metadata
         run: pipx run twine check dist/*.whl
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           path: dist/*.whl
+          name: wheels-${{ matrix.os }}
       - name: Generate coverage report
         # linux wheels are built inside docker container, I don't know how to extract
         # the .coverage file from there, so skip coverage/codacov from linux for now...
@@ -122,12 +126,12 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
-        name: artifact
         path: dist
+        merge-multiple: true
 
-    - uses: pypa/gh-action-pypi-publish@v1.4.2
+    - uses: pypa/gh-action-pypi-publish@v1.12.0
       with:
         user: __token__
         password: ${{ secrets.PYPI_PASSWORD }}
