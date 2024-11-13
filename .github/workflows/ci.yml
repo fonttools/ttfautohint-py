@@ -115,7 +115,7 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         if: ${{ !startsWith(matrix.os, 'ubuntu') }}
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
         with:
           file: coverage.xml
 
