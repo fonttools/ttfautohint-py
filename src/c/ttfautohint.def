@@ -1,5 +1,0 @@
-LIBRARY ttfautohint.dll
-EXPORTS
-TTF_autohint
-TTF_autohint_version
-TTF_autohint_version_string
