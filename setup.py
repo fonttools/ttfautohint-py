@@ -240,24 +240,7 @@ class ExecutableBuildExt(build_ext):
             build_ext.build_extension(self, ext)
             return
 
-        env = dict(os.environ)
         if platform.system() == "Windows":
-            # MSYS2 is required to build ttfautohint on Windows
-            import struct
-
-            msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
-            msys2_bin = os.path.join(msys2_root, "usr", "bin")
-            # select mingw32 or mingw64 toolchain depending on python architecture
-            bits = struct.calcsize("P") * 8
-            toolchain = "mingw%d" % bits
-            mingw_bin = os.path.join(msys2_root, toolchain, "bin")
-            PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
-            env.update(
-                PATH=PATH,
-                MSYSTEM=toolchain.upper(),
-                # this tells bash to keep the current working directory
-                CHERE_INVOKING="1",
-            )
             # we need to run make from an msys2 login shell.
             cmd = ["bash", "-lc", "make all"]
         else:
@@ -268,6 +251,23 @@ class ExecutableBuildExt(build_ext):
             env = self._compiler_env.copy()
             if ext.env:
                 env.update(ext.env)
+            if platform.system() == "Windows":
+                import struct
+
+                msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
+                msys2_bin = os.path.join(msys2_root, "usr", "bin")
+                # select mingw32 or mingw64 toolchain depending on python architecture
+                bits = struct.calcsize("P") * 8
+                toolchain = "mingw%d" % bits
+                mingw_bin = os.path.join(msys2_root, toolchain, "bin")
+                PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
+                env.update(
+                    PATH=PATH,
+                    MSYSTEM=toolchain.upper(),
+                    # this tells bash to keep the current working directory
+                    CHERE_INVOKING="1",
+                )
+
             if self.force:
                 subprocess.call(["make", "clean"], cwd=ext.cwd, env=env)
             p = subprocess.run(cmd, cwd=ext.cwd, env=env)
