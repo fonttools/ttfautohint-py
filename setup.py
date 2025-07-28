@@ -102,13 +102,13 @@ class CustomClean(clean):
                         "-fdx",
                     ]
                 )
-            subprocess.call(["make", "clean"], cwd="src/c")
+            subprocess.call(["make", "clean"], cwd=os.path.join("src", "c"))
 
 
 ttfautohint_exe = Executable(
     "ttfautohint.ttfautohint",
-    cwd="src/c",
-    output_dir=os.path.join("build/local/bin"),
+    cwd=os.path.join("src", "c"),
+    output_dir=os.path.join("build", "local", "bin"),
 )
 
 cmdclass = {}
