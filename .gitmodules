@@ -1,0 +1,9 @@
+[submodule "src/c/freetype2"]
+	path = src/c/freetype2
+	url = git://git.sv.nongnu.org/freetype/freetype2.git
+[submodule "src/c/harfbuzz"]
+	path = src/c/harfbuzz
+	url = https://github.com/harfbuzz/harfbuzz
+[submodule "src/c/ttfautohint"]
+	path = src/c/ttfautohint
+	url = http://repo.or.cz/ttfautohint.git
