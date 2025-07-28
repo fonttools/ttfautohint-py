@@ -1,11 +1,9 @@
-from setuptools import setup, find_packages, Extension, Command
+from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.bdist_wheel import bdist_wheel
-from setuptools.command.egg_info import egg_info
 from distutils.command.clean import clean
-from distutils.errors import DistutilsSetupError
 from distutils.file_util import copy_file
-from distutils.dir_util import mkpath, remove_tree
+from distutils.dir_util import mkpath
 from distutils import log
 import os
 import platform
@@ -15,40 +13,6 @@ import subprocess
 class UniversalBdistWheel(bdist_wheel):
     def get_tag(self):
         return ("py3", "none") + bdist_wheel.get_tag(self)[2:]
-
-
-class ApplyPatches(Command):
-    user_options = []
-
-    PATCHES = {
-        "Windows": [
-            ("freetype2", "freetype2.patch"),
-            ("harfbuzz", "harfbuzz.patch"),
-        ],
-    }
-
-    def __init__(self, *args, **kwargs):
-        Command.__init__(self, *args, **kwargs)
-        self._applied = False
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        if self._applied:
-            return
-
-        system = platform.system()
-        if system in self.PATCHES:
-            for src_dir, patch_file in self.PATCHES[system]:
-                src_dir = os.path.join("src", "c", src_dir)
-                patch = os.path.join("..", patch_file)
-                subprocess.run(["git", "apply", patch], cwd=src_dir, check=True)
-
-        self._applied = True
 
 
 class Executable(Extension):
@@ -66,25 +30,11 @@ class Executable(Extension):
 
 
 class ExecutableBuildExt(build_ext):
-    def finalize_options(self):
-        from distutils.ccompiler import get_default_compiler
-
-        build_ext.finalize_options(self)
-
-        if self.compiler is None:
-            self.compiler = get_default_compiler(os.name)
-        self._compiler_env = dict(os.environ)
-
     def get_ext_filename(self, ext_name):
         for ext in self.extensions:
             if isinstance(ext, Executable):
                 return os.path.join(*ext_name.split(".")) + ext.suffix
         return build_ext.get_ext_filename(self, ext_name)
-
-    def run(self):
-        self.run_command("apply_patches")
-
-        build_ext.run(self)
 
     def build_extension(self, ext):
         if not isinstance(ext, Executable):
@@ -93,13 +43,13 @@ class ExecutableBuildExt(build_ext):
 
         if platform.system() == "Windows":
             # we need to run make from an msys2 login shell.
-            cmd = ["msys2", "-c", "make all"]
+            cmd = ["bash", "-lc", "make all"]
         else:
             cmd = ["make", "all"]
 
         log.debug("running '{}'".format(" ".join(cmd)))
         if not self.dry_run:
-            env = self._compiler_env.copy()
+            env = dict(os.environ)
             if ext.env:
                 env.update(ext.env)
             if platform.system() == "Windows":
@@ -135,13 +85,6 @@ class ExecutableBuildExt(build_ext):
         copy_file(exe_fullpath, dest_path, verbose=self.verbose, dry_run=self.dry_run)
 
 
-class CustomEggInfo(egg_info):
-    def run(self):
-        # make sure the ttfautohint source is patched before creating sdist manifest
-        self.run_command("apply_patches")
-        egg_info.run(self)
-
-
 class CustomClean(clean):
     def run(self):
         clean.run(self)
@@ -173,9 +116,7 @@ ext_modules = []
 for env_var in ("TTFAUTOHINTPY_BUNDLE_DLL", "TTFAUTOHINTPY_BUNDLE_EXE"):
     if os.environ.get(env_var, "0") in {"1", "yes", "true"}:
         cmdclass["bdist_wheel"] = UniversalBdistWheel
-        cmdclass["apply_patches"] = ApplyPatches
         cmdclass["build_ext"] = ExecutableBuildExt
-        cmdclass["egg_info"] = CustomEggInfo
         cmdclass["clean"] = CustomClean
         ext_modules = [ttfautohint_exe]
 
