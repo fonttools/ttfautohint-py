@@ -45,7 +45,7 @@ jobs:
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_LINUX: x86_64
-      CIBW_ARCHS_MACOS: x86_64 universal2
+      CIBW_ARCHS_MACOS: universal2
       CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
       # Building for one python version is enough, since this is a
       # 'universal binary wheel' (py3-none-*) not
