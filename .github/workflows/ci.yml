@@ -43,6 +43,7 @@ jobs:
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: x86_64 universal2
+      CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
       # Building for one python version is enough, since this is a
       # 'universal binary wheel' (py3-none-*) not
       # linked to a specific python version or implementation.
