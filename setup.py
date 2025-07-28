@@ -169,7 +169,10 @@ class ApplyPatches(Command):
     user_options = []
 
     PATCHES = {
-        "Windows": ["freetype2.patch", "harfbuzz.patch"],
+        "Windows": [
+            ("freetype", "freetype2.patch"),
+            ("harfbuzz", "harfbuzz.patch"),
+        ],
     }
 
     def __init__(self, *args, **kwargs):
@@ -188,9 +191,10 @@ class ApplyPatches(Command):
 
         system = platform.system()
         if system in self.PATCHES:
-            for patch_file in self.PATCHES[system]:
-                patch = os.path.join("src", "c", patch_file)
-                subprocess.call(["git", "apply", patch])
+            for src_dir, patch_file in self.PATCHES[system]:
+                src_dir = os.path.join("src", "c", src_dir)
+                patch = os.path.join("..", patch_file)
+                subprocess.call(["git", "apply", patch], cwd=src_dir)
 
         self._applied = True
 
