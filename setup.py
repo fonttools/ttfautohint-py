@@ -71,7 +71,7 @@ class ExecutableBuildExt(build_ext):
 
             if self.force:
                 subprocess.call(["make", "clean"], cwd=ext.cwd, env=env)
-            p = subprocess.run(cmd, cwd=ext.cwd, env=env)
+            p = subprocess.run(cmd, cwd=ext.cwd, env=env, shell=True)
             if p.returncode != 0:
                 from distutils.errors import DistutilsExecError
 
