@@ -207,7 +207,7 @@ class Executable(Extension):
 
     def __init__(self, name, output_dir=".", cwd=None, env=None):
         Extension.__init__(self, name, sources=[])
-        self.target = self.name.split(".")[-1]
+        self.target = self.name.split(".")[-1] + self.suffix
         self.output_dir = output_dir
         self.cwd = cwd
         self.env = env
@@ -233,25 +233,36 @@ class ExecutableBuildExt(build_ext):
         self.run_command("download")
         self.run_command("apply_patches")
 
-        if self.compiler == "msvc":
-            self.call_vcvarsall_bat()
-
         build_ext.run(self)
-
-    def call_vcvarsall_bat(self):
-        import struct
-        from distutils._msvccompiler import _get_vc_env
-
-        arch = "x64" if struct.calcsize("P") * 8 == 64 else "x86"
-        vc_env = _get_vc_env(arch)
-        self._compiler_env.update(vc_env)
 
     def build_extension(self, ext):
         if not isinstance(ext, Executable):
             build_ext.build_extension(self, ext)
             return
 
-        cmd = ["make"] + [ext.target]
+        env = dict(os.environ)
+        if platform.system() == "Windows":
+            # MSYS2 is required to build ttfautohint on Windows
+            import struct
+
+            msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
+            msys2_bin = os.path.join(msys2_root, "usr", "bin")
+            # select mingw32 or mingw64 toolchain depending on python architecture
+            bits = struct.calcsize("P") * 8
+            toolchain = "mingw%d" % bits
+            mingw_bin = os.path.join(msys2_root, toolchain, "bin")
+            PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
+            env.update(
+                PATH=PATH,
+                MSYSTEM=toolchain.upper(),
+                # this tells bash to keep the current working directory
+                CHERE_INVOKING="1",
+            )
+            # we need to run make from an msys2 login shell.
+            cmd = ["bash", "-lc", "make all"]
+        else:
+            cmd = ["make", "all"]
+
         log.debug("running '{}'".format(" ".join(cmd)))
         if not self.dry_run:
             env = self._compiler_env.copy()
@@ -265,7 +276,7 @@ class ExecutableBuildExt(build_ext):
 
                 raise DistutilsExecError("running 'make' failed")
 
-        exe_fullpath = os.path.join(ext.output_dir, ext.target + ext.suffix)
+        exe_fullpath = os.path.join(ext.output_dir, ext.target)
 
         dest_path = self.get_ext_fullpath(ext.name)
         mkpath(os.path.dirname(dest_path), verbose=self.verbose, dry_run=self.dry_run)
