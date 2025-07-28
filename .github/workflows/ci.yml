@@ -81,12 +81,6 @@ jobs:
         run: |
           python -m pip install setuptools_scm
           echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
-      - name: Apply local patches (Windows)
-        if: startsWith(matrix.os, 'windows')
-        shell: bash
-        run: |
-          python setup.py download
-          src/c/apply_patches.sh
       - name: Update path (Mac)
         if: startsWith(matrix.os, 'macos')
         run: |
