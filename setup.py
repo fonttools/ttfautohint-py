@@ -17,154 +17,6 @@ class UniversalBdistWheel(bdist_wheel):
         return ("py3", "none") + bdist_wheel.get_tag(self)[2:]
 
 
-class Download(Command):
-    user_options = [
-        ("ttfautohint-version=", None, "ttfautohint source version number to download"),
-        (
-            "ttfautohint-sha256=",
-            None,
-            "expected SHA-256 hash of the ttfautohint source archive",
-        ),
-        ("freetype-version=", None, "freetype version to download"),
-        ("freetype-sha256=", None, "expected SHA-256 hash of the freetype archive"),
-        ("harfbuzz-version=", None, "harfbuzz version to download"),
-        ("harfbuzz-sha256=", None, "expected SHA-256 hash of the harfbuzz archive"),
-        (
-            "download-dir=",
-            "d",
-            "where to unpack the 'ttfautohint' dir (default: src/c)",
-        ),
-        ("clean", None, "remove existing directory before downloading"),
-    ]
-    boolean_options = ["clean"]
-
-    TTFAUTOHINT_URL_TEMPLATE = (
-        "https://download.savannah.gnu.org/releases/freetype/"
-        "ttfautohint-{ttfautohint_version}.tar.gz"
-    )
-    FREETYPE_URL_TEMPLATE = (
-        "https://download.savannah.gnu.org/releases/freetype/"
-        "freetype-{freetype_version}.tar.xz"
-    )
-    HARFBUZZ_URL_TEMPLATE = (
-        "https://github.com/harfbuzz/harfbuzz/releases/download/{harfbuzz_version}/"
-        "harfbuzz-{harfbuzz_version}.tar.xz"
-    )
-
-    def initialize_options(self):
-        self.ttfautohint_version = None
-        self.ttfautohint_sha256 = None
-        self.freetype_version = None
-        self.freetype_sha256 = None
-        self.harfbuzz_version = None
-        self.harfbuzz_sha256 = None
-        self.download_dir = None
-        self.clean = False
-
-    def finalize_options(self):
-        if self.ttfautohint_version is None:
-            raise DistutilsSetupError("must specify --ttfautohint-version to download")
-        if self.freetype_version is None:
-            raise DistutilsSetupError("must specify --freetype-version to download")
-        if self.harfbuzz_version is None:
-            raise DistutilsSetupError("must specify --harfbuzz-version to download")
-
-        if self.ttfautohint_sha256 is None:
-            raise DistutilsSetupError(
-                "must specify --ttfautohint-sha256 of downloaded file"
-            )
-        if self.freetype_sha256 is None:
-            raise DistutilsSetupError(
-                "must specify --freetype-sha256 of downloaded file"
-            )
-        if self.harfbuzz_sha256 is None:
-            raise DistutilsSetupError(
-                "must specify --harfbuzz-sha256 of downloaded file"
-            )
-
-        if self.download_dir is None:
-            self.download_dir = os.path.join("src", "c")
-
-        self.to_download = {
-            "ttfautohint": self.TTFAUTOHINT_URL_TEMPLATE.format(**vars(self)),
-            "freetype": self.FREETYPE_URL_TEMPLATE.format(**vars(self)),
-            "harfbuzz": self.HARFBUZZ_URL_TEMPLATE.format(**vars(self)),
-        }
-
-    def run(self):
-        from urllib.request import urlopen
-        from io import BytesIO
-        import tarfile
-        import gzip
-        import lzma
-        import hashlib
-
-        for download_name, url in self.to_download.items():
-            output_dir = os.path.join(self.download_dir, download_name)
-            if self.clean and os.path.isdir(output_dir):
-                remove_tree(output_dir, verbose=self.verbose, dry_run=self.dry_run)
-
-            if os.path.isdir(output_dir):
-                log.info("{} was already downloaded".format(output_dir))
-            else:
-                archive_name = url.rsplit("/", 1)[-1]
-
-                mkpath(self.download_dir, verbose=self.verbose, dry_run=self.dry_run)
-
-                log.info("downloading {}".format(url))
-                if not self.dry_run:
-                    # response is not seekable so we first download *.tar.gz to an
-                    # in-memory file, and then extract all files to the output_dir
-                    f = BytesIO()
-                    with urlopen(url) as response:
-                        f.write(response.read())
-                    f.seek(0)
-
-                actual_sha256 = hashlib.sha256(f.getvalue()).hexdigest()
-                expected_sha256 = getattr(self, download_name + "_sha256")
-                if actual_sha256 != expected_sha256:
-                    from distutils.errors import DistutilsSetupError
-
-                    raise DistutilsSetupError(
-                        "invalid SHA-256 checksum:\nactual:   {}\nexpected: {}".format(
-                            actual_sha256, expected_sha256
-                        )
-                    )
-
-                log.info("unarchiving {} to {}".format(archive_name, output_dir))
-                if not self.dry_run:
-                    ext = os.path.splitext(archive_name)[-1]
-                    if ext == ".xz":
-                        compression_module = lzma
-                    elif ext == ".gz":
-                        compression_module = gzip
-                    else:
-                        raise NotImplementedError(
-                            f"Don't know how to decompress archive with {ext} extension"
-                        )
-                    with compression_module.open(f) as archive:
-                        with tarfile.open(fileobj=archive) as tar:
-                            filelist = tar.getmembers()
-                            first = filelist[0]
-                            if not (
-                                first.isdir() and first.name.startswith(download_name)
-                            ):
-                                from distutils.errors import DistutilsSetupError
-
-                                raise DistutilsSetupError(
-                                    "The downloaded archive is not recognized as "
-                                    "a valid ttfautohint source tarball"
-                                )
-                            # strip the root directory before extracting
-                            rootdir = first.name + "/"
-                            to_extract = []
-                            for member in filelist[1:]:
-                                if member.name.startswith(rootdir):
-                                    member.name = member.name[len(rootdir) :]
-                                    to_extract.append(member)
-                            tar.extractall(output_dir, members=to_extract)
-
-
 class ApplyPatches(Command):
     user_options = []
 
@@ -230,7 +82,6 @@ class ExecutableBuildExt(build_ext):
         return build_ext.get_ext_filename(self, ext_name)
 
     def run(self):
-        self.run_command("download")
         self.run_command("apply_patches")
 
         build_ext.run(self)
@@ -242,7 +93,7 @@ class ExecutableBuildExt(build_ext):
 
         if platform.system() == "Windows":
             # we need to run make from an msys2 login shell.
-            cmd = ["bash", "-lc", "make all"]
+            cmd = ["msys2", "-c", "make all"]
         else:
             cmd = ["make", "all"]
 
@@ -286,8 +137,7 @@ class ExecutableBuildExt(build_ext):
 
 class CustomEggInfo(egg_info):
     def run(self):
-        # make sure the ttfautohint source is downloaded before creating sdist manifest
-        self.run_command("download")
+        # make sure the ttfautohint source is patched before creating sdist manifest
         self.run_command("apply_patches")
         egg_info.run(self)
 
@@ -295,13 +145,20 @@ class CustomEggInfo(egg_info):
 class CustomClean(clean):
     def run(self):
         clean.run(self)
-        # also remove downloaded sources and all build byproducts
-        for path in ["src/c/ttfautohint", "src/c/freetype", "src/c/harfbuzz"]:
-            if os.path.isdir(path):
-                remove_tree(path, self.verbose, self.dry_run)
-            else:
-                log.info("'{}' does not exist -- can't clean it".format(path))
         if not self.dry_run:
+            # if -a, also git clean submodules to remove all the build byproducts
+            if self.all:
+                subprocess.call(
+                    [
+                        "git",
+                        "submodule",
+                        "foreach",
+                        "--recursive",
+                        "git",
+                        "clean",
+                        "-fdx",
+                    ]
+                )
             subprocess.call(["make", "clean"], cwd="src/c")
 
 
@@ -316,7 +173,6 @@ ext_modules = []
 for env_var in ("TTFAUTOHINTPY_BUNDLE_DLL", "TTFAUTOHINTPY_BUNDLE_EXE"):
     if os.environ.get(env_var, "0") in {"1", "yes", "true"}:
         cmdclass["bdist_wheel"] = UniversalBdistWheel
-        cmdclass["download"] = Download
         cmdclass["apply_patches"] = ApplyPatches
         cmdclass["build_ext"] = ExecutableBuildExt
         cmdclass["egg_info"] = CustomEggInfo
