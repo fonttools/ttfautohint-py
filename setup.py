@@ -8,6 +8,7 @@ from distutils.file_util import copy_file
 from distutils.dir_util import mkpath, remove_tree
 from distutils import log
 import os
+import platform
 import subprocess
 
 
@@ -164,6 +165,36 @@ class Download(Command):
                             tar.extractall(output_dir, members=to_extract)
 
 
+class ApplyPatches(Command):
+    user_options = []
+
+    PATCHES = {
+        "Windows": ["freetype2.patch", "harfbuzz.patch"],
+    }
+
+    def __init__(self, *args, **kwargs):
+        Command.__init__(self, *args, **kwargs)
+        self._applied = False
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        if self._applied:
+            return
+
+        system = platform.system()
+        if system in self.PATCHES:
+            for patch_file in self.PATCHES[system]:
+                patch = os.path.join("src", "c", patch_file)
+                subprocess.call(["git", "apply", patch])
+
+        self._applied = True
+
+
 class Executable(Extension):
     if os.name == "nt":
         suffix = ".exe"
@@ -196,6 +227,7 @@ class ExecutableBuildExt(build_ext):
 
     def run(self):
         self.run_command("download")
+        self.run_command("apply_patches")
 
         if self.compiler == "msvc":
             self.call_vcvarsall_bat()
@@ -241,6 +273,7 @@ class CustomEggInfo(egg_info):
     def run(self):
         # make sure the ttfautohint source is downloaded before creating sdist manifest
         self.run_command("download")
+        self.run_command("apply_patches")
         egg_info.run(self)
 
 
@@ -269,6 +302,7 @@ for env_var in ("TTFAUTOHINTPY_BUNDLE_DLL", "TTFAUTOHINTPY_BUNDLE_EXE"):
     if os.environ.get(env_var, "0") in {"1", "yes", "true"}:
         cmdclass["bdist_wheel"] = UniversalBdistWheel
         cmdclass["download"] = Download
+        cmdclass["apply_patches"] = ApplyPatches
         cmdclass["build_ext"] = ExecutableBuildExt
         cmdclass["egg_info"] = CustomEggInfo
         cmdclass["clean"] = CustomClean
