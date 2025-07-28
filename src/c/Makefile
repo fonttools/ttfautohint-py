@@ -29,7 +29,8 @@ ttfautohint: $(TMP)/.ttfautohint-stamp
 
 $(TMP)/.freetype-stamp:
 	@mkdir -p $(TMP)
-	cd $(SRC)/freetype; ./configure \
+	cd $(SRC)/freetype2; ./autogen.sh
+	cd $(SRC)/freetype2; ./configure \
 	  --without-bzip2 \
 	  --without-png \
 	  --without-zlib \
@@ -43,12 +44,13 @@ $(TMP)/.freetype-stamp:
 	  CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
 	  CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
 	  LDFLAGS="$(LDFLAGS)"
-	cd $(SRC)/freetype; make
-	cd $(SRC)/freetype; make install
+	cd $(SRC)/freetype2; make
+	cd $(SRC)/freetype2; make install
 	@touch $(TMP)/.freetype-stamp
 
 $(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
 	@mkdir -p $(TMP)
+	cd $(SRC)/harfbuzz; NOCONFIGURE=1 ./autogen.sh
 	cd $(SRC)/harfbuzz; ./configure \
 	  --disable-dependency-tracking \
 	  --disable-gtk-doc-html \
@@ -71,6 +73,7 @@ $(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
 
 $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
 	@mkdir -p $(TMP)
+	cd $(SRC)/ttfautohint; ./bootstrap
 	cd $(SRC)/ttfautohint; ./configure \
           --disable-dependency-tracking \
           --without-qt \
