@@ -83,7 +83,9 @@ jobs:
       - name: Apply local patches (Windows)
         if: startsWith(matrix.os, 'windows')
         shell: bash
-        run: src/c/apply_patches.sh
+        run: |
+          python setup.py download
+          src/c/apply_patches.sh
       - name: Update path (Mac)
         if: startsWith(matrix.os, 'macos')
         run: |
