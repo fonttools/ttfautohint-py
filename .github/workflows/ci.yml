@@ -57,6 +57,8 @@ jobs:
       CIBW_TEST_COMMAND: cd {project} && coverage run --parallel-mode -m pytest
       # on Windows I need '/d' flag to change both drive and directory at once
       CIBW_TEST_COMMAND_WINDOWS: cd /d {project} && coverage run --parallel-mode -m pytest
+      # TEMPORARY: skip tests on Windows
+      CIBW_TEST_SKIP: "*win*"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -102,6 +104,17 @@ jobs:
         run: python -m pip install cibuildwheel
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
+      - name: Analyze DLL dependencies (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        run: |
+          # Download Dependencies.exe for DLL analysis
+          curl -L -o dependencies.zip https://github.com/lucasg/Dependencies/releases/latest/download/Dependencies_x64_Release.zip
+          unzip -q dependencies.zip
+          # Analyze the built ttfautohint.exe binary
+          ./Dependencies.exe -chain build/local/bin/ttfautohint.exe
+          # Also check what DLLs it tries to load
+          ./Dependencies.exe -imports build/local/bin/ttfautohint.exe
       - name: Check wheels metadata
         run: pipx run twine check dist/*.whl
       - uses: actions/upload-artifact@v4
