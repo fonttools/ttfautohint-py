@@ -3,7 +3,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 FREETYPE2_PATCH="${SCRIPT_DIR}/freetype2.patch"
 HARFBUZZ_PATCH="${SCRIPT_DIR}/harfbuzz.patch"
 
-cd "${SCRIPT_DIR}/freetype2"
+cd "${SCRIPT_DIR}/freetype"
 git apply "${FREETYPE2_PATCH}"
 
 cd "${SCRIPT_DIR}/harfbuzz"
