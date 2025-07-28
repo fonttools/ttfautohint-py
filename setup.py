@@ -126,9 +126,9 @@ class Download(Command):
                     from distutils.errors import DistutilsSetupError
 
                     raise DistutilsSetupError(
-                        "invalid SHA-256 checksum:\n"
-                        "actual:   {}\n"
-                        "expected: {}".format(actual_sha256, expected_sha256)
+                        "invalid SHA-256 checksum:\nactual:   {}\nexpected: {}".format(
+                            actual_sha256, expected_sha256
+                        )
                     )
 
                 log.info("unarchiving {} to {}".format(archive_name, output_dir))
@@ -207,7 +207,7 @@ class Executable(Extension):
 
     def __init__(self, name, output_dir=".", cwd=None, env=None):
         Extension.__init__(self, name, sources=[])
-        self.target = self.name.split(".")[-1] + self.suffix
+        self.target = self.name.split(".")[-1]
         self.output_dir = output_dir
         self.cwd = cwd
         self.env = env
@@ -265,7 +265,7 @@ class ExecutableBuildExt(build_ext):
 
                 raise DistutilsExecError("running 'make' failed")
 
-        exe_fullpath = os.path.join(ext.output_dir, ext.target)
+        exe_fullpath = os.path.join(ext.output_dir, ext.target + ext.suffix)
 
         dest_path = self.get_ext_fullpath(ext.name)
         mkpath(os.path.dirname(dest_path), verbose=self.verbose, dry_run=self.dry_run)
