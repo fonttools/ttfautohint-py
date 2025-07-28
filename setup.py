@@ -327,9 +327,11 @@ with open("README.md", "r", encoding="utf-8") as readme:
     long_description = readme.read()
 
 setup(
-    name="ttfautohint",
+    name="ttfautohint-py",
     use_scm_version={"write_to": "src/python/ttfautohint/_version.py"},
-    description=("Python wrapper for ttfautohint"),
+    description=(
+        "Python wrapper for ttfautohint, a free auto-hinter for TrueType fonts"
+    ),
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Cosimo Lupo",
@@ -344,7 +346,7 @@ setup(
     cmdclass=cmdclass,
     setup_requires=["setuptools_scm"],
     extras_require={"testing": ["pytest", "coverage", "fontTools"]},
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
