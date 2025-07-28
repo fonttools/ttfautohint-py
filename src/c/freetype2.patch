@@ -1,8 +1,8 @@
 diff --git a/builds/unix/configure.raw b/builds/unix/configure.raw
-index f326872cb..2efb64863 100644
+index 7a795cbc0..0acd9ee81 100644
 --- a/builds/unix/configure.raw
 +++ b/builds/unix/configure.raw
-@@ -934,8 +934,17 @@ case "$CFLAGS" in
+@@ -962,8 +962,17 @@ case "$CFLAGS" in
  esac
  
  # Check for pthreads
@@ -21,4 +21,4 @@ index f326872cb..2efb64863 100644
 +esac
  
  # Check for Python and docwriter
- 
+ PYTHON_MIN_VERSION=3.5
