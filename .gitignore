@@ -31,8 +31,3 @@ src/python/ttfautohint/_version.py
 
 # executable built in-place
 src/python/ttfautohint/ttfautohint
-
-# uncompressed source tarballs
-src/c/ttfautohint/
-src/c/freetype/
-src/c/harfbuzz/
