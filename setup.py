@@ -22,7 +22,7 @@ class ApplyPatches(Command):
 
     PATCHES = {
         "Windows": [
-            ("freetype", "freetype2.patch"),
+            ("freetype2", "freetype2.patch"),
             ("harfbuzz", "harfbuzz.patch"),
         ],
     }
@@ -46,7 +46,7 @@ class ApplyPatches(Command):
             for src_dir, patch_file in self.PATCHES[system]:
                 src_dir = os.path.join("src", "c", src_dir)
                 patch = os.path.join("..", patch_file)
-                subprocess.call(["git", "apply", patch], cwd=src_dir)
+                subprocess.run(["git", "apply", patch], cwd=src_dir, check=True)
 
         self._applied = True
 
