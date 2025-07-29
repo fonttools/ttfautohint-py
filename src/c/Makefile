@@ -76,7 +76,8 @@ $(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
 	cd $(SRC)/harfbuzz; make install
 	@touch $(TMP)/.harfbuzz-stamp
 
-# We pass --disable-threads on MinGW to avoid depending on libwinpthread-1.dll
+# --disable-threads since Python itself runs in a single thread anyway; also
+# it avoids depending on libwinpthread.dll on Windows, and we get a smaller binary
 $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
 	@mkdir -p $(TMP)
 	cd $(SRC)/ttfautohint; ./bootstrap
@@ -86,7 +87,7 @@ $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
           --without-doc \
           --prefix="$(PREFIX)" \
           $(LIBTTFAUTOHINT_OPTIONS) \
-          $(if $(findstring MINGW,$(shell uname -s)),--disable-threads) \
+          --disable-threads \
           CFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CFLAGS)" \
           CXXFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CXXFLAGS)" \
           LDFLAGS="$(LDFLAGS)" \
