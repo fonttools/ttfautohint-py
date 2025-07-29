@@ -1,7 +1,10 @@
+import atexit
 import io
 import os
+import stat
 import subprocess
 import sys
+from contextlib import ExitStack
 from importlib.resources import as_file, files, is_resource
 
 from ttfautohint._version import __version__
@@ -12,20 +15,37 @@ from ttfautohint.options import validate_options, format_kwargs, StemWidthMode
 __all__ = ["__version__", "ttfautohint", "TAError", "StemWidthMode", "run"]
 
 
-EXECUTABLE = "ttfautohint"
+# clean up resources on exit
+_exit_stack = ExitStack()
+atexit.register(_exit_stack.close)
+
+_exe_basename = "ttfautohint"
 if sys.platform == "win32":
-    EXECUTABLE += ".exe"
+    _exe_basename += ".exe"
+_exe_full_path = None
 
-HAS_BUNDLED_EXE = None
 
+def _executable_path() -> str:
+    global _exe_full_path
 
-def _has_bundled_exe():
-    global HAS_BUNDLED_EXE
+    if _exe_full_path is None:
+        if is_resource(__name__, _exe_basename):
+            _exe_full_path = str(
+                _exit_stack.enter_context(
+                    as_file(files(__name__).joinpath(_exe_basename))
+                )
+            )
+            # need to chmod +x in case it was extracted from a zip
+            if not os.access(_exe_full_path, os.X_OK):
+                os.chmod(_exe_full_path, os.stat(_exe_full_path).st_mode | stat.S_IEXEC)
+        else:
+            import shutil
 
-    if HAS_BUNDLED_EXE is None:
-        HAS_BUNDLED_EXE = is_resource(__name__, EXECUTABLE)
+            _exe_full_path = shutil.which(_exe_basename)
+            if _exe_full_path is None:
+                raise TAError("ttfautohint executable not found on $PATH")
 
-    return HAS_BUNDLED_EXE
+    return _exe_full_path
 
 
 def run(args, **kwargs):
@@ -40,11 +60,7 @@ def run(args, **kwargs):
         subprocess.CompletedProcess object with the following attributes:
         args, returncode, stdout, stderr.
     """
-    if _has_bundled_exe():
-        with as_file(files(__name__).joinpath(EXECUTABLE)) as bundled_exe:
-            return subprocess.run([str(bundled_exe)] + list(args), **kwargs)
-    else:
-        return subprocess.run([EXECUTABLE] + list(args), **kwargs)
+    return subprocess.run([_executable_path()] + list(args), **kwargs)
 
 
 # TODO: add docstring
