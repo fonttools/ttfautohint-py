@@ -21,7 +21,7 @@ endif
 
 # On Windows/MINGW, statically link GCC runtime libraries to avoid DLL dependencies
 ifneq (,$(findstring MINGW,$(shell uname -s)))
-	LDFLAGS += -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
+	LDFLAGS += -static-libgcc -static-libstdc++
 endif
 
 all: ttfautohint
@@ -76,6 +76,7 @@ $(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
 	cd $(SRC)/harfbuzz; make install
 	@touch $(TMP)/.harfbuzz-stamp
 
+# We pass --disable-threads on MinGW to avoid depending on libwinpthread-1.dll
 $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
 	@mkdir -p $(TMP)
 	cd $(SRC)/ttfautohint; ./bootstrap
@@ -85,6 +86,7 @@ $(TMP)/.ttfautohint-stamp: $(TMP)/.harfbuzz-stamp
           --without-doc \
           --prefix="$(PREFIX)" \
           $(LIBTTFAUTOHINT_OPTIONS) \
+          $(if $(findstring MINGW,$(shell uname -s)),--disable-threads) \
           CFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CFLAGS)" \
           CXXFLAGS="$(CPPFLAGS) -I$(TMP)/ttfautohint/lib $(CXXFLAGS)" \
           LDFLAGS="$(LDFLAGS)" \
