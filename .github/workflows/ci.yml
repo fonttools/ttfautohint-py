@@ -110,7 +110,7 @@ jobs:
           curl -L -o dependencies.zip https://github.com/lucasg/Dependencies/releases/latest/download/Dependencies_x64_Release.zip
           unzip -q dependencies.zip
           # Analyze the built ttfautohint.exe binary
-          ./Dependencies.exe -chain build/local/bin/ttfautohint.exe
+          ./Dependencies.exe -depth 1 -chain build/local/bin/ttfautohint.exe
           # Also check what DLLs it tries to load
           ./Dependencies.exe -imports build/local/bin/ttfautohint.exe
       - name: Check wheels metadata
