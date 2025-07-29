@@ -26,13 +26,21 @@ endif
 
 all: ttfautohint
 
+patches: $(TMP)/.patches-stamp
+
+$(TMP)/.patches-stamp:
+	@mkdir -p $(TMP)
+	@echo "Applying patches..."
+	@$(SRC)/apply_patches.sh
+	@touch $(TMP)/.patches-stamp
+
 freetype: $(TMP)/.freetype-stamp
 
 harfbuzz: $(TMP)/.harfbuzz-stamp
 
 ttfautohint: $(TMP)/.ttfautohint-stamp
 
-$(TMP)/.freetype-stamp:
+$(TMP)/.freetype-stamp: $(TMP)/.patches-stamp
 	@mkdir -p $(TMP)
 	cd $(SRC)/freetype2; ./autogen.sh
 	cd $(SRC)/freetype2; ./configure \

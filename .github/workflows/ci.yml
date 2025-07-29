@@ -80,8 +80,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Set up environment (Windows)
-        if: startsWith(matrix.os, 'windows')
+      - name: Set up environment
         shell: bash
         # applying patches makes the working directory 'dirty', which changes the
         # git-generated version, so we save the current version beforehand
