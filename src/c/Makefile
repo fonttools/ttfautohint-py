@@ -19,6 +19,11 @@ ifeq ($(shell uname -s), Darwin)
 	LDFLAGS  += -m64 -arch x86_64 -arch arm64 -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 endif
 
+# On Windows/MINGW, statically link GCC runtime libraries to avoid DLL dependencies
+ifneq (,$(findstring MINGW,$(shell uname -s)))
+	LDFLAGS += -static-libgcc -static-libstdc++
+endif
+
 all: ttfautohint
 
 freetype: $(TMP)/.freetype-stamp
