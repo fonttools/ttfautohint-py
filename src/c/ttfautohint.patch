@@ -1,0 +1,14 @@
+diff --git a/configure.ac b/configure.ac
+index 7f9106d..8379454 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -89,6 +89,9 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+ AC_PATH_PROG([BISON], [bison])
+ AC_PATH_PROG([FLEX], [flex])
+ 
++# Disable threading support in gnulib to avoid pthread dependencies
++gl_DISABLE_THREADS
++
+ gl_INIT
+ 
+ PKG_CHECK_MODULES([HARFBUZZ], [harfbuzz >= 2.4.0])
