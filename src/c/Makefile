@@ -21,7 +21,7 @@ endif
 
 # On Windows/MINGW, statically link GCC runtime libraries to avoid DLL dependencies
 ifneq (,$(findstring MINGW,$(shell uname -s)))
-	LDFLAGS += -static-libgcc -static-libstdc++
+	LDFLAGS += -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
 endif
 
 all: ttfautohint
