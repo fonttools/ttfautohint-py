@@ -139,7 +139,7 @@ setup(
     package_dir={"": "src/python"},
     packages=find_packages("src/python"),
     ext_modules=ext_modules,
-    zip_safe=any(ext_modules),
+    zip_safe=True,
     cmdclass=cmdclass,
     setup_requires=["setuptools_scm"],
     extras_require={"testing": ["pytest", "coverage", "fontTools"]},
