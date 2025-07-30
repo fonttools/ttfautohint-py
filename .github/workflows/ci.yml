@@ -46,7 +46,7 @@ jobs:
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       # on windows cibuildwheel builds both 32 and 64 bit one after the other so
       # it's necessary to clean the build dir between builds
-      CIBW_BEFORE_BUILD: python setup.py clean -a
+      CIBW_BEFORE_BUILD_WINDOWS: "python -m pip install setuptools_scm && python setup.py clean -a"
       CIBW_BUILD_FRONTEND: "pip"
       CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: universal2
