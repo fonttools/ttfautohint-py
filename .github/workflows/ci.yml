@@ -44,6 +44,9 @@ jobs:
       CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_EXE=1
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
+      # on windows cibuildwheel builds both 32 and 64 bit one after the other so
+      # it's necessary to clean the build dir between builds
+      CIBW_BEFORE_BUILD: python setup.py clean -a
       CIBW_ARCHS_LINUX: x86_64
       CIBW_ARCHS_MACOS: universal2
       CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
