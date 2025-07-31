@@ -24,6 +24,9 @@ ifneq (,$(findstring MINGW,$(shell uname -s)))
 	LDFLAGS += -static-libgcc -static-libstdc++
 endif
 
+$(info DEBUG: uname -s returns: $(shell uname -s))
+$(info DEBUG: Final LDFLAGS: $(LDFLAGS))
+
 all: ttfautohint
 
 patches:
