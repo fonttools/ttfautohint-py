@@ -61,7 +61,7 @@ jobs:
       CIBW_TEST_COMMAND: cd {project} && coverage run --parallel-mode -m pytest
       # on Windows I need '/d' flag to change both drive and directory at once
       CIBW_TEST_COMMAND_WINDOWS: cd /d {project} && coverage run --parallel-mode -m pytest
-      MINGWROOT: "C:\\mingw-win32"
+      CIBW_ENVIRONMENT_WINDOWS: "MINGWROOT=C:\\mingw-win32"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,7 +98,7 @@ jobs:
         # git-generated version, so we save the current version beforehand
         run: |
           python -m pip install setuptools_scm
-          echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
+          echo CIBW_ENVIRONMENT="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
       - name: Apply local patches
         shell: bash
         run: src/c/apply_patches.sh
