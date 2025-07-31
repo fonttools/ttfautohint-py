@@ -74,7 +74,7 @@ $(TMP)/.harfbuzz-stamp: $(TMP)/.freetype-stamp
 	  --enable-static \
 	  --disable-shared \
 	  CFLAGS="$(CPPFLAGS) $(CFLAGS)" \
-	  CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS)" \
+	  CXXFLAGS="$(CPPFLAGS) $(CXXFLAGS) -DHB_NO_MT" \
 	  LDFLAGS="$(LDFLAGS)" \
 	  PKG_CONFIG=true \
 	  FREETYPE_CFLAGS="$(CPPFLAGS)/freetype2" \
