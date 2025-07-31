@@ -55,21 +55,36 @@ class ExecutableBuildExt(build_ext):
             if platform.system() == "Windows":
                 import struct
 
+                # MSYS2 is required on Windows, as we need bash, make, autotools etc.
                 msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
                 msys2_bin = os.path.join(msys2_root, "usr", "bin")
+                if not os.path.isdir(msys2_bin):
+                    from distutils.errors import DistutilsPlatformError
+
+                    raise DistutilsPlatformError(f"Could not find {msys2_bin}")
+
                 # select mingw32 or mingw64 toolchain depending on python architecture
                 bits = struct.calcsize("P") * 8
                 toolchain = "mingw%d" % bits
+                msys2_mingw_bin = os.path.join(msys2_root, toolchain, "bin")
+                extra_paths = [msys2_mingw_bin, msys2_bin]
 
-                # We require the standalone MinGW with win32 threads (MSYS2 only comes with
-                # posix threads and unnecessarily pulls in libwinpthread-1.dll)
-                standalone_mingw = f"C:\\mingw-win32\\mingw{bits}\\bin"
-                if not os.path.isdir(standalone_mingw):
-                    from distutils.errors import DistutilsPlatformError
+                # See if we can use the standalone MinGW with win32 threads instead of MSYS2's
+                # (the latter only comes with posix threads and unnecessarily pulls in
+                # libwinpthread-1.dll)
+                mingw_root = env.get("MINGWROOT")
+                if mingw_root is not None:
+                    mingw_root = os.path.abspath(mingw_root)
+                    standalone_mingw = os.path.join(mingw_root, toolchain, "bin")
+                    if not os.path.isdir(standalone_mingw):
+                        from distutils.errors import DistutilsPlatformError
 
-                    raise DistutilsPlatformError(f"Could not find {standalone_mingw}")
+                        raise DistutilsPlatformError(
+                            f"Could not find {standalone_mingw}"
+                        )
+                    extra_paths.insert(0, standalone_mingw)
 
-                PATH = os.pathsep.join([standalone_mingw, msys2_bin, env["PATH"]])
+                PATH = os.pathsep.join([*extra_paths, env["PATH"]])
                 env.update(
                     PATH=PATH,
                     MSYSTEM=toolchain.upper(),
