@@ -21,7 +21,7 @@ endif
 
 # On Windows/MINGW, statically link GCC runtime libraries to avoid DLL dependencies
 ifneq (,$(findstring MINGW,$(shell uname -s)))
-	LDFLAGS += -static-libgcc -static-libstdc++
+	LDFLAGS += -static -static-libgcc -static-libstdc++
 endif
 
 $(info DEBUG: uname -s returns: $(shell uname -s))
