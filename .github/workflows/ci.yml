@@ -163,6 +163,8 @@ jobs:
     needs: [build_sdist, build_wheels]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' && github.event.action == 'published'
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
 
     steps:
     - uses: actions/download-artifact@v4
@@ -170,7 +172,4 @@ jobs:
         path: dist
         merge-multiple: true
 
-    - uses: pypa/gh-action-pypi-publish@v1.12.0
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_PASSWORD }}
+    - uses: pypa/gh-action-pypi-publish@release/v1
