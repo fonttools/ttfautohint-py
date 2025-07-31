@@ -2,21 +2,23 @@ import sys
 from io import StringIO, BytesIO
 import argparse
 import os
-import logging
 import pytest
 
-from ctypes import c_ulonglong
-
-from ttfautohint._compat import ensure_binary, text_type
+from ttfautohint._compat import ensure_binary
 from ttfautohint.options import (
-    validate_options, format_varargs, strong_stem_width,
-    stdin_or_input_path_type, stdout_or_output_path_type, parse_args,
-    stem_width_mode, StemWidthMode, _windows_cmdline2list
+    validate_options,
+    strong_stem_width,
+    stdin_or_input_path_type,
+    stdout_or_output_path_type,
+    parse_args,
+    format_kwargs,
+    stem_width_mode,
+    StemWidthMode,
+    _windows_cmdline2list,
 )
 
 
 class TestValidateOptions(object):
-
     def test_no_input(self):
         with pytest.raises(ValueError, match="No input file"):
             validate_options({})
@@ -28,8 +30,7 @@ class TestValidateOptions(object):
 
         # 's' for plural
         kwargs = dict(foo="bar", baz=False)
-        with pytest.raises(TypeError,
-                           match="unknown keyword arguments: 'foo', 'baz'"):
+        with pytest.raises(TypeError, match="unknown keyword arguments: 'foo', 'baz'"):
             validate_options(kwargs)
 
     def test_no_info_or_detailed_info(self, tmpdir):
@@ -48,18 +49,20 @@ class TestValidateOptions(object):
     def test_control_file_or_control_buffer(self, tmpdir):
         msg = "control_file and control_buffer are mutually exclusive"
         control_file = (tmpdir / "ta_ctrl.txt").ensure()
-        kwargs = dict(in_buffer=b"\0\1\0\0",
-                      control_file=control_file,
-                      control_buffer=b"abcd")
+        kwargs = dict(
+            in_buffer=b"\0\1\0\0", control_file=control_file, control_buffer=b"abcd"
+        )
         with pytest.raises(ValueError, match=msg):
             validate_options(kwargs)
 
     def test_reference_file_or_reference_buffer(self, tmpdir):
         msg = "reference_file and reference_buffer are mutually exclusive"
         reference_file = (tmpdir / "ref.ttf").ensure()
-        kwargs = dict(in_buffer=b"\0\1\0\0",
-                      reference_file=reference_file,
-                      reference_buffer=b"\x00\x01\x00\x00")
+        kwargs = dict(
+            in_buffer=b"\0\1\0\0",
+            reference_file=reference_file,
+            reference_buffer=b"\x00\x01\x00\x00",
+        )
         with pytest.raises(ValueError, match=msg):
             validate_options(kwargs)
 
@@ -69,213 +72,144 @@ class TestValidateOptions(object):
         in_file.write_binary(data)
 
         # 'in_file' is a file-like object
-        options = validate_options({'in_file': in_file.open(mode="rb")})
+        options = validate_options({"in_file": in_file.open(mode="rb")})
         assert options["in_buffer"] == data
         assert "in_file" not in options
-        assert options["in_buffer_len"] == len(data)
 
         # 'in_file' is a path string
         options = validate_options({"in_file": str(in_file)})
         assert options["in_buffer"] == data
         assert "in_file" not in options
-        assert options["in_buffer_len"] == len(data)
 
     def test_in_buffer_is_bytes(self, tmpdir):
         with pytest.raises(TypeError, match="in_buffer type must be bytes"):
-            validate_options({"in_buffer": u"abcd"})
+            validate_options({"in_buffer": "abcd"})
 
-    def test_control_file_to_control_buffer(self, tmpdir):
-        control_file = tmpdir / "ta_ctrl.txt"
-        data = u"abcd"
-        control_file.write_text(data, encoding="utf-8")
-
-        # 'control_file' is a file object opened in text mode
-        with control_file.open(mode="rt", encoding="utf-8") as f:
-            kwargs = {'in_buffer': b"\0", 'control_file': f}
-            options = validate_options(kwargs)
-        assert options["control_buffer"] == data.encode("utf-8")
-        assert "control_file" not in options
-        assert options["control_buffer_len"] == len(data)
-        assert options["control_name"] == str(control_file)
-
-        # 'control_file' is a path string
-        kwargs = {'in_buffer': b"\0", 'control_file': str(control_file)}
-        options = validate_options(kwargs)
-        assert options["control_buffer"] == data.encode("utf-8")
-        assert "control_file" not in options
-        assert options["control_buffer_len"] == len(data)
-        assert options["control_name"] == str(control_file)
-
-        # 'control_file' is a file-like stream
-        kwargs = {'in_buffer': b"\0", 'control_file': StringIO(data)}
-        options = validate_options(kwargs)
-        assert options["control_buffer"] == data.encode("utf-8")
-        assert "control_file" not in options
-        assert options["control_buffer_len"] == len(data)
-        # the stream doesn't have a 'name' attribute; using fallback
-        assert options["control_name"] == u"<control-instructions>"
-
-    def test_control_buffer_name(self, tmpdir):
-        kwargs = {"in_buffer": b"\0", "control_buffer": b"abcd"}
-        options = validate_options(kwargs)
-        assert options["control_name"] == u"<control-instructions>"
-
-    def test_reference_file_to_reference_buffer(self, tmpdir):
-        reference_file = tmpdir / "font.ttf"
-        data = b"\0\1\0\0"
-        reference_file.write_binary(data)
-        encoded_filename = ensure_binary(
-            str(reference_file), encoding=sys.getfilesystemencoding())
-
-        # 'reference_file' is a file object opened in binary mode
-        with reference_file.open(mode="rb") as f:
-            kwargs = {'in_buffer': b"\0", 'reference_file': f}
-            options = validate_options(kwargs)
-        assert options["reference_buffer"] == data
-        assert "reference_file" not in options
-        assert options["reference_buffer_len"] == len(data)
-        assert options["reference_name"] == encoded_filename
-
-        # 'reference_file' is a path string
-        kwargs = {'in_buffer': b"\0", 'reference_file': str(reference_file)}
-        options = validate_options(kwargs)
-        assert options["reference_buffer"] == data
-        assert "reference_file" not in options
-        assert options["reference_buffer_len"] == len(data)
-        assert options["reference_name"] == encoded_filename
-
-        # 'reference_file' is a file-like stream
-        kwargs = {'in_buffer': b"\0", 'reference_file': BytesIO(data)}
-        options = validate_options(kwargs)
-        assert options["reference_buffer"] == data
-        assert "reference_file" not in options
-        assert options["reference_buffer_len"] == len(data)
-        # the stream doesn't have a 'name' attribute, no reference_name
-        assert options["reference_name"] is None
-
-    def test_custom_reference_name(self, tmpdir):
-        reference_file = tmpdir / "font.ttf"
-        data = b"\0\1\0\0"
-        reference_file.write_binary(data)
-        expected = u"Some Font".encode(sys.getfilesystemencoding())
-
-        with reference_file.open(mode="rb") as f:
-            kwargs = {'in_buffer': b"\0",
-                      'reference_file': f,
-                      'reference_name': u"Some Font"}
-            options = validate_options(kwargs)
-
-        assert options["reference_name"] == expected
-
-        kwargs = {'in_buffer': b"\0",
-                  'reference_file': str(reference_file),
-                  'reference_name': u"Some Font"}
+    def test_control_buffer_to_control_file(self, tmpdir):
+        kwargs = {"in_buffer": b"\0", "control_buffer": "abcd"}
         options = validate_options(kwargs)
 
-        assert options["reference_name"] == expected
+        assert "control_buffer" not in options
+        assert isinstance(options["control_file"], str)
+        with open(options["control_file"], "r") as f:
+            assert f.read() == "abcd"
+
+    def test_reference_buffer_to_reference_file(self, tmpdir):
+        kwargs = {"in_buffer": b"\0", "reference_buffer": b"\0\1\0\0"}
+        options = validate_options(kwargs)
+
+        assert "reference_buffer" not in options
+        assert isinstance(options["reference_file"], str)
+        with open(options["reference_file"], "rb") as f:
+            assert f.read() == b"\0\1\0\0"
 
     def test_reference_buffer_is_bytes(self, tmpdir):
-        with pytest.raises(TypeError,
-                           match="reference_buffer type must be bytes"):
-            validate_options({"in_buffer": b"\0", "reference_buffer": u""})
+        with pytest.raises(TypeError, match="reference_buffer type must be bytes"):
+            validate_options({"in_buffer": b"\0", "reference_buffer": ""})
 
     def test_epoch(self):
         options = validate_options({"in_buffer": b"\0", "epoch": 0})
-        assert isinstance(options["epoch"], c_ulonglong)
-        assert options["epoch"].value == 0
+        assert isinstance(options["epoch"], int)
+        assert options["epoch"] == 0
 
     def test_family_suffix(self):
-        options = validate_options({"in_buffer": b"\0",
-                                    "family_suffix": b"-TA"})
-        assert isinstance(options["family_suffix"], text_type)
-        assert options["family_suffix"] == u"-TA"
+        options = validate_options({"in_buffer": b"\0", "family_suffix": b"-TA"})
+        assert isinstance(options["family_suffix"], str)
+        assert options["family_suffix"] == "-TA"
 
 
 @pytest.mark.parametrize(
     "options, expected",
     [
-        (
-            {},
-            (b"", ())
-        ),
+        ({}, []),
         (
             {
-                "in_buffer": b"\0\1\0\0",
-                "in_buffer_len": 4,
-                "out_buffer": None,
-                "out_buffer_len": None,
-                "error_string": None,
-                "alloc_func": None,
-                "free_func": None,
-                "info_callback": None,
-                "info_post_callback": None,
-                "progress_callback": None,
-                "progress_callback_data": None,
-                "error_callback": None,
-                "error_callback_data": None,
-                "control_buffer": b"abcd",
-                "control_buffer_len": 4,
-                "reference_buffer": b"\0\1\0\0",
-                "reference_buffer_len": 4,
+                "in_file": "/path/to/input_font.ttf",
+                "out_file": "/path/to/output_font.ttf",
+                "control_file": "/path/to/control_file.txt",
+                "reference_file": "/path/to/reference_font.ttf",
                 "reference_index": 1,
-                "reference_name": b"/path/to/font.ttf",
-                "hinting_range_min": 8,
-                "hinting_range_max": 50,
-                "hinting_limit": 200,
-                "hint_composites": False,
-                "adjust_subglyphs": False,
-                "increase_x_height": 14,
-                "x_height_snapping_exceptions": b"6,15-18",
+                "hinting_range_min": 9,
+                "hinting_range_max": 51,
+                "hinting_limit": 201,
+                "hint_composites": True,
+                "adjust_subglyphs": True,
+                "increase_x_height": 15,
+                "x_height_snapping_exceptions": "6,15-18",
                 "windows_compatibility": True,
-                "default_script": b"grek",
-                "fallback_script": b"latn",
-                "fallback_scaling": False,
+                "default_script": "grek",
+                "fallback_script": "latn",
+                "fallback_scaling": True,
                 "symbol": True,
                 "fallback_stem_width": 100,
                 "ignore_restrictions": True,
-                "family_suffix": b"-Hinted",
+                "family_suffix": "-Hinted",
                 "detailed_info": True,
                 "no_info": False,
                 "TTFA_info": True,
-                "dehint": False,
+                "dehint": True,
                 "epoch": 1513955869,
                 "debug": False,
                 "verbose": True,
+                "gray_stem_width_mode": StemWidthMode.NATURAL,
+                "gdi_cleartype_stem_width_mode": StemWidthMode.NATURAL,
+                "dw_cleartype_stem_width_mode": StemWidthMode.NATURAL,
             },
-            ((b"TTFA-info, adjust-subglyphs, control-buffer, "
-              b"control-buffer-len, debug, default-script, dehint, "
-              b"detailed-info, epoch, fallback-scaling, fallback-script, "
-              b"fallback-stem-width, family-suffix, hint-composites, "
-              b"hinting-limit, hinting-range-max, hinting-range-min, "
-              b"ignore-restrictions, in-buffer, in-buffer-len, "
-              b"increase-x-height, no-info, reference-buffer, "
-              b"reference-buffer-len, reference-index, reference-name, "
-              b"symbol, verbose, windows-compatibility, "
-              b"x-height-snapping-exceptions"),
-             (True, False, b'abcd',
-              4, False, b'grek', False,
-              True, 1513955869, False, b'latn',
-              100, b'-Hinted', False,
-              200, 50, 8,
-              True, b'\x00\x01\x00\x00', 4,
-              14, False, b'\x00\x01\x00\x00',
-              4, 1, b'/path/to/font.ttf',
-              True, True, True,
-              b'6,15-18'))
+            [
+                "--in-file",
+                "/path/to/input_font.ttf",
+                "--out-file",
+                "/path/to/output_font.ttf",
+                "--control-file",
+                "/path/to/control_file.txt",
+                "--reference",
+                "/path/to/reference_font.ttf",
+                "--reference-index",
+                "1",
+                "--hinting-range-min",
+                "9",
+                "--hinting-range-max",
+                "51",
+                "--hinting-limit",
+                "201",
+                "--composites",
+                "--adjust-subglyphs",
+                "--increase-x-height",
+                "15",
+                "--x-height-snapping-exceptions",
+                "6,15-18",
+                "--windows-compatibility",
+                "--default-script",
+                "grek",
+                "--fallback-script",
+                "latn",
+                "--fallback-scaling",
+                "--symbol",
+                "--fallback-stem-width",
+                "100",
+                "--ignore-restrictions",
+                "--family-suffix",
+                "-Hinted",
+                "--detailed-info",
+                "--ttfa-table",
+                "--dehint",
+                "--epoch",
+                "1513955869",
+                "--verbose",
+                "--stem-width-mode",
+                "nnn",
+            ],
         ),
-        (
-            {"unkown_option": 1},
-            (b"", ())
-        )
+        ({"unkown_option": 1}, []),
     ],
     ids=[
         "empty",
         "full-options",
         "unknown-option",
-    ]
+    ],
 )
-def test_format_varargs(options, expected):
-    assert format_varargs(**options) == expected
+def test_format_kwargs(options, expected):
+    assert format_kwargs(**options) == expected
 
 
 @pytest.mark.parametrize(
@@ -286,61 +220,55 @@ def test_format_varargs(options, expected):
             {
                 "gray_stem_width_mode": StemWidthMode.QUANTIZED,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+            },
         ),
         (
             "g",
             {
                 "gray_stem_width_mode": StemWidthMode.STRONG,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+            },
         ),
         (
             "G",
             {
                 "gray_stem_width_mode": StemWidthMode.QUANTIZED,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.STRONG,
-                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+            },
         ),
         (
             "D",
             {
                 "gray_stem_width_mode": StemWidthMode.QUANTIZED,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG,
+            },
         ),
         (
             "DGg",
             {
                 "gray_stem_width_mode": StemWidthMode.STRONG,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.STRONG,
-                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG,
+            },
         ),
     ],
-    ids=[
-        "empty-string",
-        "only-gray",
-        "only-gdi",
-        "only-dw",
-        "all"
-    ]
+    ids=["empty-string", "only-gray", "only-gdi", "only-dw", "all"],
 )
 def test_strong_stem_width(string, expected):
     assert strong_stem_width(string) == expected
 
 
 def test_strong_stem_width_invalid():
-    with pytest.raises(argparse.ArgumentTypeError,
-                       match="string can only contain up to 3 letters"):
+    with pytest.raises(
+        argparse.ArgumentTypeError, match="string can only contain up to 3 letters"
+    ):
         strong_stem_width("GGGG")
 
-    with pytest.raises(argparse.ArgumentTypeError,
-                       match="invalid value: 'a'"):
+    with pytest.raises(argparse.ArgumentTypeError, match="invalid value: 'a'"):
         strong_stem_width("a")
 
 
@@ -352,60 +280,61 @@ def test_strong_stem_width_invalid():
             {
                 "gray_stem_width_mode": StemWidthMode.NATURAL,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.NATURAL,
-                "dw_cleartype_stem_width_mode": StemWidthMode.NATURAL
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.NATURAL,
+            },
         ),
         (
             "qqq",
             {
                 "gray_stem_width_mode": StemWidthMode.QUANTIZED,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
+            },
         ),
         (
             "sss",
             {
                 "gray_stem_width_mode": StemWidthMode.STRONG,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.STRONG,
-                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG,
+            },
         ),
         (
             "nqs",
             {
                 "gray_stem_width_mode": StemWidthMode.NATURAL,
                 "gdi_cleartype_stem_width_mode": StemWidthMode.QUANTIZED,
-                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG
-            }
+                "dw_cleartype_stem_width_mode": StemWidthMode.STRONG,
+            },
         ),
     ],
-    ids=["nnn", "qqq", "sss", "nqs"]
+    ids=["nnn", "qqq", "sss", "nqs"],
 )
 def test_stem_width_mode(string, expected):
     assert stem_width_mode(string) == expected
 
 
 def test_stem_width_mode_invalid():
-    with pytest.raises(argparse.ArgumentTypeError,
-                       match="must consist of exactly three letters"):
+    with pytest.raises(
+        argparse.ArgumentTypeError, match="must consist of exactly three letters"
+    ):
         stem_width_mode("nnnn")
 
-    with pytest.raises(argparse.ArgumentTypeError,
-                       match="Stem width mode letter for .* must be"):
+    with pytest.raises(
+        argparse.ArgumentTypeError, match="Stem width mode letter for .* must be"
+    ):
         stem_width_mode("zzz")
 
 
 @pytest.fixture(
     params=[True, False],
-    ids=['tty', 'pipe'],
+    ids=["tty", "pipe"],
 )
 def isatty(request):
     return request.param
 
 
 class MockFile(object):
-
     def __init__(self, f, isatty):
         self._file = f
         self._isatty = isatty
@@ -460,7 +389,6 @@ def test_path_output_type(tmpdir):
 
 
 class TestParseArgs(object):
-
     argv0 = "python -m ttfautohint"
 
     def test_unrecognized_arguments(self, monkeypatch, capsys):
@@ -520,8 +448,7 @@ class TestParseArgs(object):
         env["SOURCE_DATE_EPOCH"] = invalid_epoch
         monkeypatch.setattr(os, "environ", env)
 
-        with pytest.warns(UserWarning,
-                          match="invalid SOURCE_DATE_EPOCH: 'foobar'"):
+        with pytest.warns(UserWarning, match="invalid SOURCE_DATE_EPOCH: 'foobar'"):
             options = parse_args([])
 
         assert "epoch" not in options

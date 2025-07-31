@@ -48,11 +48,17 @@ jobs:
       matrix:
         os: [ "ubuntu-latest", "macos-13", "windows-latest" ]
     env:
-      CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_DLL=1
+      CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_EXE=1
+      CIBW_ENVIRONMENT_WINDOWS: "TTFAUTOHINTPY_BUNDLE_EXE=1 MINGWROOT=C:\\mingw-win32"
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
+      # on windows cibuildwheel builds both 32 and 64 bit one after the other so
+      # it's necessary to clean the build dir between builds
+      CIBW_BEFORE_BUILD_WINDOWS: "python -m pip install setuptools_scm && python setup.py clean -a"
+      CIBW_BUILD_FRONTEND: "pip"
       CIBW_ARCHS_LINUX: x86_64
-      CIBW_ARCHS_MACOS: x86_64 universal2
+      CIBW_ARCHS_MACOS: universal2
+      CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
       # Building for one python version is enough, since this is a
       # 'universal binary wheel' (py3-none-*) not
       # linked to a specific python version or implementation.
@@ -81,23 +87,32 @@ jobs:
           release: false
           install: >-
             base-devel
-            mingw-w64-x86_64-toolchain
-            mingw-w64-i686-toolchain
             autotools
             git
             mingw-w64-i686-ragel
             mingw-w64-x86_64-ragel
+      - name: "Install MinGW-w64 with win32 threads (Windows)"
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        run: |
+          # Download MinGW-w64 with win32 threads (64-bit)
+          curl -L -o mingw64.7z "https://github.com/niXman/mingw-builds-binaries/releases/download/15.1.0-rt_v12-rev0/x86_64-15.1.0-release-win32-seh-msvcrt-rt_v12-rev0.7z"
+          7z x mingw64.7z -o/c/mingw-win32/
+
+          # Download MinGW-w64 with win32 threads (32-bit)
+          curl -L -o mingw32.7z "https://github.com/niXman/mingw-builds-binaries/releases/download/15.1.0-rt_v12-rev0/i686-15.1.0-release-win32-dwarf-msvcrt-rt_v12-rev0.7z"
+          7z x mingw32.7z -o/c/mingw-win32/
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Set up environment (Windows)
-        if: startsWith(matrix.os, 'windows')
+      - name: Set up environment
         shell: bash
         # applying patches makes the working directory 'dirty', which changes the
         # git-generated version, so we save the current version beforehand
-        run: echo CIBW_ENVIRONMENT_WINDOWS="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
-      - name: Apply local patches (Windows)
-        if: startsWith(matrix.os, 'windows')
+        run: |
+          python -m pip install setuptools_scm
+          echo CIBW_ENVIRONMENT="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
+      - name: Apply local patches
         shell: bash
         run: src/c/apply_patches.sh
       - name: Update path (Mac)
@@ -112,6 +127,17 @@ jobs:
         run: python -m pip install cibuildwheel
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
+      - name: Analyze DLL dependencies (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: bash
+        run: |
+          # Download Dependencies.exe for DLL analysis
+          curl -L -o dependencies.zip https://github.com/lucasg/Dependencies/releases/latest/download/Dependencies_x64_Release.zip
+          unzip -q dependencies.zip
+          # Analyze the built ttfautohint.exe binary
+          ./Dependencies.exe -depth 1 -chain build/local/bin/ttfautohint.exe
+          # Also check what DLLs it tries to load
+          ./Dependencies.exe -imports build/local/bin/ttfautohint.exe
       - name: Check wheels metadata
         run: pipx run twine check dist/*.whl
       - uses: actions/upload-artifact@v4

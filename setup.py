@@ -1,124 +1,159 @@
-from __future__ import print_function, absolute_import
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
+from setuptools.command.bdist_wheel import bdist_wheel
+from distutils.command.clean import clean
 from distutils.file_util import copy_file
 from distutils.dir_util import mkpath
 from distutils import log
 import os
-import sys
+import platform
 import subprocess
-from io import open
 
+
+class UniversalBdistWheel(bdist_wheel):
+    def get_tag(self):
+        return ("py3", "none") + bdist_wheel.get_tag(self)[2:]
+
+
+class Executable(Extension):
+    if os.name == "nt":
+        suffix = ".exe"
+    else:
+        suffix = ""
+
+    def __init__(self, name, output_dir=".", cwd=None, env=None):
+        Extension.__init__(self, name, sources=[])
+        self.target = self.name.split(".")[-1] + self.suffix
+        self.output_dir = output_dir
+        self.cwd = cwd
+        self.env = env
+
+
+class ExecutableBuildExt(build_ext):
+    def get_ext_filename(self, ext_name):
+        for ext in self.extensions:
+            if isinstance(ext, Executable):
+                return os.path.join(*ext_name.split(".")) + ext.suffix
+        return build_ext.get_ext_filename(self, ext_name)
+
+    def build_extension(self, ext):
+        if not isinstance(ext, Executable):
+            build_ext.build_extension(self, ext)
+            return
+
+        if platform.system() == "Windows":
+            # we need to run make from a bash shell.
+            cmd = ["bash", "-c", "make all"]
+        else:
+            cmd = ["make", "all"]
+
+        log.debug("running '{}'".format(" ".join(cmd)))
+        if not self.dry_run:
+            env = dict(os.environ)
+            if ext.env:
+                env.update(ext.env)
+            if platform.system() == "Windows":
+                import struct
+
+                # MSYS2 is required on Windows, as we need bash, make, autotools etc.
+                msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
+                msys2_bin = os.path.join(msys2_root, "usr", "bin")
+                if not os.path.isdir(msys2_bin):
+                    from distutils.errors import DistutilsPlatformError
+
+                    raise DistutilsPlatformError(f"Could not find {msys2_bin}")
+
+                # select mingw32 or mingw64 toolchain depending on python architecture
+                bits = struct.calcsize("P") * 8
+                toolchain = "mingw%d" % bits
+                msys2_mingw_bin = os.path.join(msys2_root, toolchain, "bin")
+                extra_paths = [msys2_mingw_bin, msys2_bin]
+
+                # See if we can use the standalone MinGW with win32 threads instead of MSYS2's
+                # (the latter only comes with posix threads and unnecessarily pulls in
+                # libwinpthread-1.dll)
+                mingw_root = env.get("MINGWROOT")
+                if mingw_root is not None:
+                    mingw_root = os.path.abspath(mingw_root)
+                    standalone_mingw = os.path.join(mingw_root, toolchain, "bin")
+                    if not os.path.isdir(standalone_mingw):
+                        from distutils.errors import DistutilsPlatformError
+
+                        raise DistutilsPlatformError(
+                            f"Could not find {standalone_mingw}"
+                        )
+                    extra_paths.insert(0, standalone_mingw)
+
+                PATH = os.pathsep.join([*extra_paths, env["PATH"]])
+                env.update(
+                    PATH=PATH,
+                    MSYSTEM=toolchain.upper(),
+                    # this tells bash to keep the current working directory
+                    CHERE_INVOKING="1",
+                )
+
+            if self.force:
+                subprocess.call(["make", "clean"], cwd=ext.cwd, env=env)
+            p = subprocess.run(cmd, cwd=ext.cwd, env=env, shell=True)
+            if p.returncode != 0:
+                from distutils.errors import DistutilsExecError
+
+                raise DistutilsExecError("running 'make' failed")
+
+        exe_fullpath = os.path.join(ext.output_dir, ext.target)
+
+        dest_path = self.get_ext_fullpath(ext.name)
+        mkpath(os.path.dirname(dest_path), verbose=self.verbose, dry_run=self.dry_run)
+
+        copy_file(exe_fullpath, dest_path, verbose=self.verbose, dry_run=self.dry_run)
+
+
+class CustomClean(clean):
+    def run(self):
+        clean.run(self)
+        if not self.dry_run:
+            # if -a, also git clean submodules to remove all the build byproducts
+            if self.all:
+                subprocess.call(
+                    [
+                        "git",
+                        "submodule",
+                        "foreach",
+                        "--recursive",
+                        "git",
+                        "clean",
+                        "-fdx",
+                    ]
+                )
+            subprocess.call(["make", "clean"], cwd=os.path.join("src", "c"))
+
+
+ttfautohint_exe = Executable(
+    "ttfautohint.ttfautohint",
+    cwd=os.path.join("src", "c"),
+    output_dir=os.path.join("build", "local", "bin"),
+)
 
 cmdclass = {}
 ext_modules = []
-if os.environ.get("TTFAUTOHINTPY_BUNDLE_DLL", "0") in {"1", "yes", "true"}:
-    try:
-        from wheel.bdist_wheel import bdist_wheel
-    except ImportError:
-        print("warning: wheel package is not installed", file=sys.stderr)
-    else:
-        class UniversalBdistWheel(bdist_wheel):
+for env_var in ("TTFAUTOHINTPY_BUNDLE_DLL", "TTFAUTOHINTPY_BUNDLE_EXE"):
+    if os.environ.get(env_var, "0") in {"1", "yes", "true"}:
+        cmdclass["bdist_wheel"] = UniversalBdistWheel
+        cmdclass["build_ext"] = ExecutableBuildExt
+        cmdclass["clean"] = CustomClean
+        ext_modules = [ttfautohint_exe]
 
-            def get_tag(self):
-                return ('py2.py3', 'none',) + bdist_wheel.get_tag(self)[2:]
-
-        cmdclass['bdist_wheel'] = UniversalBdistWheel
-
-
-    class SharedLibrary(Extension):
-
-        if sys.platform == "darwin":
-            suffix = ".dylib"
-        elif sys.platform == "win32":
-            suffix = ".dll"
-        else:
-            suffix = ".so"
-
-        def __init__(self, name, cmd, cwd=".", output_dir=".", env=None):
-            Extension.__init__(self, name, sources=[])
-            self.cmd = cmd
-            self.cwd = os.path.normpath(cwd)
-            self.output_dir = os.path.normpath(output_dir)
-            self.env = env or dict(os.environ)
-
-
-    class SharedLibBuildExt(build_ext):
-
-        def get_ext_filename(self, ext_name):
-            for ext in self.extensions:
-                if isinstance(ext, SharedLibrary):
-                    return os.path.join(*ext_name.split('.')) + ext.suffix
-            return build_ext.get_ext_filename(self, ext_name)
-
-        def build_extension(self, ext):
-            if not isinstance(ext, SharedLibrary):
-                build_ext.build_extension(self, ext)
-                return
-
-            log.info("running '%s'" % " ".join(ext.cmd))
-            if not self.dry_run:
-                rv = subprocess.Popen(ext.cmd,
-                                      cwd=ext.cwd,
-                                      env=ext.env,
-                                      shell=True).wait()
-                if rv != 0:
-                    sys.exit(rv)
-
-            lib_name = ext.name.split(".")[-1] + ext.suffix
-            lib_fullpath = os.path.join(ext.output_dir, lib_name)
-
-            dest_path = self.get_ext_fullpath(ext.name)
-            mkpath(os.path.dirname(dest_path),
-                   verbose=self.verbose, dry_run=self.dry_run)
-
-            copy_file(lib_fullpath, dest_path,
-                      verbose=self.verbose, dry_run=self.dry_run)
-
-
-    cmdclass['build_ext'] = SharedLibBuildExt
-
-    env = dict(os.environ)
-    if sys.platform == "win32":
-        import struct
-
-        msys2_root = os.path.abspath(env.get("MSYS2ROOT", "C:\\msys64"))
-        msys2_bin = os.path.join(msys2_root, "usr", "bin")
-        # select mingw32 or mingw64 toolchain depending on python architecture
-        bits = struct.calcsize("P") * 8
-        toolchain = "mingw%d" % bits
-        mingw_bin = os.path.join(msys2_root, toolchain, "bin")
-        PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
-        env.update(
-            PATH=PATH,
-            MSYSTEM=toolchain.upper(),
-            # this tells bash to keep the current working directory
-            CHERE_INVOKING="1",
-        )
-        # we need to run make from an msys2 login shell.
-        # We do 'make clean' because libraries are built in-place and we want
-        # to make sure previous builds don't leave anything behind.
-        cmd = ["bash", "-lc", "make clean all"]
-    else:
-        cmd = ["make", "clean", "all"]
-
-    libttfautohint = SharedLibrary("ttfautohint.libttfautohint",
-                                   cmd=cmd,
-                                   cwd="src/c",
-                                   env=env,
-                                   output_dir="build/local/lib")
-    ext_modules.append(libttfautohint)
-
-
-with open("README.rst", "r", encoding="utf-8") as readme:
+with open("README.md", "r", encoding="utf-8") as readme:
     long_description = readme.read()
 
 setup(
     name="ttfautohint-py",
-    use_scm_version=True,
-    description=("Python wrapper for ttfautohint, "
-                 "a free auto-hinter for TrueType fonts"),
+    use_scm_version={"write_to": "src/python/ttfautohint/_version.py"},
+    description=(
+        "Python wrapper for ttfautohint, a free auto-hinter for TrueType fonts"
+    ),
     long_description=long_description,
+    long_description_content_type="text/markdown",
     author="Cosimo Lupo",
     author_email="cosimo@anthrotype.com",
     url="https://github.com/fonttools/ttfautohint-py",
@@ -127,9 +162,11 @@ setup(
     package_dir={"": "src/python"},
     packages=find_packages("src/python"),
     ext_modules=ext_modules,
-    zip_safe=False,
+    zip_safe=True,
     cmdclass=cmdclass,
-    setup_requires=['setuptools_scm'],
+    setup_requires=["setuptools_scm"],
+    extras_require={"testing": ["pytest", "coverage", "fontTools"]},
+    python_requires=">=3.9",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
@@ -140,7 +177,6 @@ setup(
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Topic :: Text Processing :: Fonts",
         "Topic :: Multimedia :: Graphics",
