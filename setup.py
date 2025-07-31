@@ -42,8 +42,8 @@ class ExecutableBuildExt(build_ext):
             return
 
         if platform.system() == "Windows":
-            # we need to run make from an msys2 login shell.
-            cmd = ["bash", "-lc", "make all"]
+            # we need to run make from a bash shell.
+            cmd = ["bash", "-c", "make all"]
         else:
             cmd = ["make", "all"]
 
