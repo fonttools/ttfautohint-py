@@ -9,6 +9,13 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
 
 jobs:
   build_sdist:
@@ -67,6 +74,12 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+      # Enable tmate debugging of manually-triggered workflows if the input option was provided
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+        with:
+          detached: true
       - name: "Set up MSYS2 (Windows)"
         uses: msys2/setup-msys2@v2
         if: startsWith(matrix.os, 'windows')
