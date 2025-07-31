@@ -23,13 +23,4 @@ else
     echo "  harfbuzz patch applied successfully"
 fi
 
-echo "Applying ttfautohint patch..."
-cd "${SCRIPT_DIR}/ttfautohint"
-if ! git apply --check "${TTFAUTOHINT_PATCH}" 2>/dev/null; then
-    echo "  ttfautohint patch already applied or not applicable"
-else
-    git apply "${TTFAUTOHINT_PATCH}"
-    echo "  ttfautohint patch applied successfully"
-fi
-
 echo "All patches processed."
