@@ -60,8 +60,16 @@ class ExecutableBuildExt(build_ext):
                 # select mingw32 or mingw64 toolchain depending on python architecture
                 bits = struct.calcsize("P") * 8
                 toolchain = "mingw%d" % bits
-                mingw_bin = os.path.join(msys2_root, toolchain, "bin")
-                PATH = os.pathsep.join([mingw_bin, msys2_bin, env["PATH"]])
+
+                # We require the standalone MinGW with win32 threads (MSYS2 only comes with
+                # posix threads and unnecessarily pulls in libwinpthread-1.dll)
+                standalone_mingw = f"C:\\mingw-win32\\mingw{bits}\\bin"
+                if not os.path.isdir(standalone_mingw):
+                    from distutils.errors import DistutilsPlatformError
+
+                    raise DistutilsPlatformError(f"Could not find {standalone_mingw}")
+
+                PATH = os.pathsep.join([standalone_mingw, msys2_bin, env["PATH"]])
                 env.update(
                     PATH=PATH,
                     MSYSTEM=toolchain.upper(),
