@@ -31,3 +31,4 @@ src/python/ttfautohint/_version.py
 
 # executable built in-place
 src/python/ttfautohint/ttfautohint
+src/python/ttfautohint/ttfautohint.exe
