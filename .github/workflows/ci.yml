@@ -42,6 +42,7 @@ jobs:
         os: [ "ubuntu-latest", "macos-13", "windows-latest" ]
     env:
       CIBW_ENVIRONMENT: TTFAUTOHINTPY_BUNDLE_EXE=1
+      CIBW_ENVIRONMENT_WINDOWS: "TTFAUTOHINTPY_BUNDLE_EXE=1 MINGWROOT=C:\\mingw-win32"
       CIBW_BEFORE_ALL_LINUX: sh ci/docker-fixes.sh
       CIBW_BEFORE_ALL_MACOS: sh ci/osx-fixes.sh
       # on windows cibuildwheel builds both 32 and 64 bit one after the other so
@@ -61,7 +62,6 @@ jobs:
       CIBW_TEST_COMMAND: cd {project} && coverage run --parallel-mode -m pytest
       # on Windows I need '/d' flag to change both drive and directory at once
       CIBW_TEST_COMMAND_WINDOWS: cd /d {project} && coverage run --parallel-mode -m pytest
-      CIBW_ENVIRONMENT_WINDOWS: "MINGWROOT=C:\\mingw-win32"
     steps:
       - uses: actions/checkout@v4
         with:
