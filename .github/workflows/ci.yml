@@ -112,9 +112,6 @@ jobs:
           # Download MinGW-w64 with win32 threads (32-bit)
           curl -L -o mingw32.7z "https://github.com/niXman/mingw-builds-binaries/releases/download/15.1.0-rt_v12-rev0/i686-15.1.0-release-win32-dwarf-msvcrt-rt_v12-rev0.7z"
           7z x mingw32.7z -o/c/mingw-win32/
-      - name: Apply local patches
-        shell: bash
-        run: src/c/apply_patches.sh
       - name: Update path (Mac)
         if: startsWith(matrix.os, 'macos')
         run: |
