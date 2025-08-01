@@ -112,9 +112,9 @@ class CustomClean(clean):
     def run(self):
         clean.run(self)
         if not self.dry_run:
-            # if -a, also git clean submodules to remove all the build byproducts
+            # if -a, also reset submodules to remove all the build byproducts
             if self.all:
-                subprocess.call(
+                subprocess.run(
                     [
                         "git",
                         "submodule",
@@ -123,9 +123,31 @@ class CustomClean(clean):
                         "git",
                         "clean",
                         "-fdx",
+                    ],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "submodule",
+                        "foreach",
+                        "--recursive",
+                        "git",
+                        "reset",
+                        "--hard",
                     ]
                 )
-            subprocess.call(["make", "clean"], cwd=os.path.join("src", "c"))
+                subprocess.run(
+                    [
+                        "git",
+                        "submodule",
+                        "update",
+                        "--init",
+                        "--recursive",
+                    ],
+                    check=True,
+                )
+            subprocess.run(["make", "clean"], cwd=os.path.join("src", "c"), check=True)
 
 
 ttfautohint_exe = Executable(
