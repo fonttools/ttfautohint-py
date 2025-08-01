@@ -91,6 +91,16 @@ jobs:
             git
             mingw-w64-i686-ragel
             mingw-w64-x86_64-ragel
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Set up environment
+        shell: bash
+        # applying patches makes the working directory 'dirty', which changes the
+        # git-generated version, so we save the current version beforehand
+        run: |
+          python -m pip install setuptools_scm
+          echo CIBW_ENVIRONMENT="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
       - name: "Install MinGW-w64 with win32 threads (Windows)"
         if: startsWith(matrix.os, 'windows')
         shell: bash
@@ -102,16 +112,6 @@ jobs:
           # Download MinGW-w64 with win32 threads (32-bit)
           curl -L -o mingw32.7z "https://github.com/niXman/mingw-builds-binaries/releases/download/15.1.0-rt_v12-rev0/i686-15.1.0-release-win32-dwarf-msvcrt-rt_v12-rev0.7z"
           7z x mingw32.7z -o/c/mingw-win32/
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - name: Set up environment
-        shell: bash
-        # applying patches makes the working directory 'dirty', which changes the
-        # git-generated version, so we save the current version beforehand
-        run: |
-          python -m pip install setuptools_scm
-          echo CIBW_ENVIRONMENT="$CIBW_ENVIRONMENT SETUPTOOLS_SCM_PRETEND_VERSION=$(python setup.py --version)" >> $GITHUB_ENV
       - name: Apply local patches
         shell: bash
         run: src/c/apply_patches.sh
