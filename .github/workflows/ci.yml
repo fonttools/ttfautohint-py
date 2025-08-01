@@ -91,11 +91,13 @@ jobs:
             git
             mingw-w64-i686-ragel
             mingw-w64-x86_64-ragel
-      - name: "Configure Git for Windows to disable line endings normalization"
+      - name: "Configure MSYS2 Git to match Github's git autocrlf settings (Windows)"
         if: startsWith(matrix.os, 'windows')
+        shell: pwsh
         run: |
-          git config --global core.autocrlf false
-          msys2 -c "git config --global core.autocrlf false"
+          $autocrlf = git config --get core.autocrlf
+          Write-Output "GitHub Git core.autocrlf: $autocrlf"
+          msys2 -c "git config --global core.autocrlf $autocrlf"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
