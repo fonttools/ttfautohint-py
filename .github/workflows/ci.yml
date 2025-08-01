@@ -93,7 +93,9 @@ jobs:
             mingw-w64-x86_64-ragel
       - name: "Configure Git for Windows to disable line endings normalization"
         if: startsWith(matrix.os, 'windows')
-        run: git config --global core.autocrlf false
+        run: |
+          git config --global core.autocrlf false
+          msys2 -c "git config --global core.autocrlf false"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
