@@ -69,6 +69,7 @@ def ttfautohint(**kwargs):
 
     in_buffer = options.pop("in_buffer")
     out_file = options.pop("out_file")
+    epoch = options.pop("epoch")
 
     capture_output = True
     stdout = None
@@ -89,12 +90,18 @@ def ttfautohint(**kwargs):
                 capture_output = False
 
     args = format_kwargs(**options)
+    run_kwargs = {}
+    if epoch is not None:
+        env = os.environ.copy()
+        env["SOURCE_DATE_EPOCH"] = str(epoch)
+        run_kwargs["env"] = env
 
     result = run(
         args,
         input=in_buffer,
         capture_output=capture_output,
         stdout=stdout,
+        **run_kwargs,
     )
     if result.returncode != 0:
         raise TAError(result.returncode, result.stderr)
