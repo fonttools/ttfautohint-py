@@ -1,10 +1,13 @@
 import os
+import subprocess
+import sys
 from glob import glob
 from io import BytesIO
 
 from fontTools.ttLib import TTFont
 
 from ttfautohint import ttfautohint
+from ttfautohint.options import parse_args
 
 import pytest
 
@@ -13,6 +16,8 @@ DATA = os.path.join(os.path.dirname(__file__), "data")
 UNHINTED_TTFS = glob(os.path.join(DATA, "*.ttf"))
 
 GLOBAL_HINTING_TABLES = ["fpgm", "prep", "cvt ", "gasp"]
+SOURCE_DATE_EPOCH = 1783025389
+MAC_EPOCH_OFFSET = 2082844800
 
 
 def autohint_font(ttfont, **options):
@@ -54,6 +59,39 @@ class TestTTFAutohint(object):
         ttfautohint(in_file=str(in_file), out_file=str(out_file))
 
         assert os.path.getsize(str(out_file)) > 0
+
+    def test_source_date_epoch_with_public_api(self, tmpdir, unhinted, monkeypatch):
+        in_file = tmpdir / "unhinted.ttf"
+        out_file = tmpdir / "hinted.ttf"
+        with in_file.open("wb") as f:
+            unhinted.save(f)
+
+        monkeypatch.setenv("SOURCE_DATE_EPOCH", str(SOURCE_DATE_EPOCH))
+        options = parse_args([str(in_file), str(out_file)])
+        assert options["epoch"] == SOURCE_DATE_EPOCH
+        monkeypatch.delenv("SOURCE_DATE_EPOCH")
+
+        ttfautohint(**options)
+
+        assert TTFont(str(out_file))["head"].modified == (
+            SOURCE_DATE_EPOCH + MAC_EPOCH_OFFSET
+        )
+
+    def test_source_date_epoch_with_module_cli(self, tmpdir, unhinted, monkeypatch):
+        in_file = tmpdir / "unhinted.ttf"
+        out_file = tmpdir / "hinted.ttf"
+        with in_file.open("wb") as f:
+            unhinted.save(f)
+
+        monkeypatch.setenv("SOURCE_DATE_EPOCH", str(SOURCE_DATE_EPOCH))
+        subprocess.run(
+            [sys.executable, "-m", "ttfautohint", str(in_file), str(out_file)],
+            check=True,
+        )
+
+        assert TTFont(str(out_file))["head"].modified == (
+            SOURCE_DATE_EPOCH + MAC_EPOCH_OFFSET
+        )
 
     def test_no_info(self, unhinted):
         hinted = autohint_font(unhinted, no_info=True)
