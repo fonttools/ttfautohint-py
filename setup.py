@@ -2,11 +2,9 @@ from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.bdist_wheel import bdist_wheel
 from distutils.command.clean import clean
-from distutils.file_util import copy_file
-from distutils.dir_util import mkpath
-from distutils import log
 import os
 import platform
+import shutil
 import subprocess
 
 
@@ -47,7 +45,7 @@ class ExecutableBuildExt(build_ext):
         else:
             cmd = ["make", "all"]
 
-        log.debug("running '{}'".format(" ".join(cmd)))
+        self.announce("running '{}'".format(" ".join(cmd)))
         if not self.dry_run:
             env = dict(os.environ)
             if ext.env:
@@ -103,9 +101,9 @@ class ExecutableBuildExt(build_ext):
         exe_fullpath = os.path.join(ext.output_dir, ext.target)
 
         dest_path = self.get_ext_fullpath(ext.name)
-        mkpath(os.path.dirname(dest_path), verbose=self.verbose, dry_run=self.dry_run)
-
-        copy_file(exe_fullpath, dest_path, verbose=self.verbose, dry_run=self.dry_run)
+        if not self.dry_run:
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            shutil.copy2(exe_fullpath, dest_path)
 
 
 class CustomClean(clean):
