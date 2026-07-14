@@ -22,18 +22,18 @@ jobs:
     name: Build Source Distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.x"
       - name: Build sdist
         run: pipx run build --sdist
       - name: Check metadata
         run: pipx run twine check dist/*.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           path: dist/*.tar.gz
           name: sdist
@@ -73,7 +73,7 @@ jobs:
       - name: "Configure Git for Windows to leave line endings alone"
         if: startsWith(matrix.os, 'windows')
         run: git config --global core.autocrlf input
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
@@ -94,7 +94,7 @@ jobs:
             git
             mingw-w64-i686-ragel
             mingw-w64-x86_64-ragel
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.x"
       - name: Set up environment
@@ -140,7 +140,7 @@ jobs:
           ./Dependencies.exe -imports build/local/bin/ttfautohint.exe
       - name: Check wheels metadata
         run: pipx run twine check dist/*.whl
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           path: dist/*.whl
           name: wheels-${{ matrix.os }}
@@ -154,9 +154,9 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         if: ${{ !startsWith(matrix.os, 'ubuntu') }}
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
-          file: coverage.xml
+          files: coverage.xml
 
   deploy:
     name: Upload if release
@@ -167,7 +167,7 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
 
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         path: dist
         merge-multiple: true
